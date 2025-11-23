@@ -6,6 +6,7 @@ export const PERMISSION_KEYS = [
   "dashboard",
   "eleuthia",
   "gallery",
+  "guardian",
   "health",
   "labs",
   "locked",
@@ -16,7 +17,6 @@ export const PERMISSION_KEYS = [
   "settingsGallery",
   "accounts",
   "settingsPermissions",
-  "accounts",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];

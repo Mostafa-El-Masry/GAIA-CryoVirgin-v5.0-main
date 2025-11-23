@@ -28,18 +28,18 @@ export default function HomePage() {
   const isAdmin = useMemo(() => isCreatorAdmin(email), [email]);
 
   // All links in one array for circular layout
-const links: NavLink[] = [
-  { href: "/gallery-awakening", label: "Gallery", permission: "gallery" },
-  { href: "/apollo", label: "Apollo", permission: "apollo" },
-  { href: "/ELEUTHIA", label: "ELEUTHIA", permission: "eleuthia" },
-  { href: "/timeline", label: "Timeline", permission: "timeline" },
-  { href: "/health-awakening", label: "Health", permission: "health" },
-  { href: "/wealth-awakening", label: "Wealth", permission: "wealth" },
-  { href: "/accounts", label: "Accounts", permission: "accounts" }, // <-- new
-  { href: "/dashboard", label: "Dashboard", permission: "dashboard" },
-  // Archives moved under Apollo; remove from main intro links
-  { href: "/settings", label: "Settings", permission: "settings" },
-];
+  const links: NavLink[] = [
+    { href: "/gallery-awakening", label: "Gallery", permission: "gallery" },
+    { href: "/apollo", label: "Apollo", permission: "apollo" },
+    { href: "/ELEUTHIA", label: "ELEUTHIA", permission: "eleuthia" },
+    { href: "/timeline", label: "Timeline", permission: "timeline" },
+    { href: "/health-awakening", label: "Health", permission: "health" },
+    { href: "/wealth-awakening", label: "Wealth", permission: "wealth" },
+    { href: "/accounts", label: "Accounts", permission: "accounts" }, // <-- new
+    { href: "/dashboard", label: "Dashboard", permission: "dashboard" },
+    // Archives moved under Apollo; remove from main intro links
+    { href: "/settings", label: "Settings", permission: "settings" },
+  ];
 
   const visibleLinks = isAdmin
     ? links
@@ -84,7 +84,9 @@ const links: NavLink[] = [
               onClick={() => setMobileOpen(false)}
             >
               <span>{link.label}</span>
-              <span className="text-xs uppercase tracking-wide text-emerald-200">Open</span>
+              <span className="text-xs uppercase tracking-wide text-emerald-200">
+                Open
+              </span>
             </Link>
           ))}
         </div>

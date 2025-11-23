@@ -6,10 +6,12 @@ import * as XLSX from "xlsx";
 type CsvRow = Record<string, string>;
 
 /**
- * Very small CSV parser for the call center exports.
+ * Small CSV parser for the call center exports.
  * Assumes:
  * - Comma as separator
  * - No quoted commas inside fields
+ * - First row is the header row
+ * Also strips a UTF-8 BOM if it exists on the first header cell.
  */
 function parseCsv(text: string): CsvRow[] {
   const lines = text
@@ -19,7 +21,7 @@ function parseCsv(text: string): CsvRow[] {
 
   if (lines.length === 0) return [];
 
-  const headerLine = lines[0];
+  const headerLine = lines[0].replace(/^\uFEFF/, "");
   const headers = headerLine.split(",").map((h) => h.trim());
 
   const rows: CsvRow[] = [];
@@ -45,13 +47,20 @@ function extractFirstDateFromDetails(detailRows: CsvRow[]): string | null {
   return null;
 }
 
+function parsePercentToFraction(raw: unknown): number | string {
+  if (typeof raw !== "string") return "";
+  const match = raw.match(/([\d.]+)%/);
+  if (!match) return "";
+  const num = parseFloat(match[1]);
+  if (Number.isNaN(num)) return "";
+  return num / 100;
+}
+
 function buildSummarySheet(summaryRows: CsvRow[], detailRows: CsvRow[]) {
-  // Try to get a date label from details, if available
   const dateLabel = extractFirstDateFromDetails(detailRows);
   const title =
     dateLabel != null ? `Call Center-Report-${dateLabel}` : "Call Center-Report";
 
-  // Filter out empty & "Total" rows
   const branches = summaryRows.filter((row) => {
     const q = row["Queue"];
     if (!q) return false;
@@ -65,24 +74,23 @@ function buildSummarySheet(summaryRows: CsvRow[], detailRows: CsvRow[]) {
     return q.trim().toLowerCase() === "total";
   });
 
-  // Header row (Excel row 1)
-  const aoa: (string | number)[][] = [];
+  const aoa: (string | number | null)[][] = [];
   aoa.push([
     title,
-    "Branch",
-    "Total Calls",
-    "Answered",
-    "Missed & Abandoned",
-    "AVG Handle Time",
-    "AVG Waiting Time (Answered Calls)",
-    "AVG Waiting Time (All Calls)",
-    "Max Waiting Time (All Calls)",
-    "Average Talking Time",
-    "Abandon Rate",
-    "Sales Rate",
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
   ]);
 
-  // Column headers (Excel row 2)
   aoa.push([
     "Sl No",
     "Branch",
@@ -94,6 +102,7 @@ function buildSummarySheet(summaryRows: CsvRow[], detailRows: CsvRow[]) {
     "AVG Waiting Time (All Calls)",
     "Max Waiting Time (All Calls)",
     "Average Talking Time",
+    "Answered Rate",
     "Abandon Rate",
     "Sales Rate",
   ]);
@@ -104,19 +113,16 @@ function buildSummarySheet(summaryRows: CsvRow[], detailRows: CsvRow[]) {
   for (const row of branches) {
     const totalCallsNum = Number(row["Total Calls"] ?? 0) || 0;
     const answeredNum = Number(row["Answered"] ?? 0) || 0;
-    const missedNum = Number(row["Missed"] ?? 0) || 0;
-    const abandonedNum = Number(row["Abandoned"] ?? 0) || 0;
-    const missedAndAbandoned = missedNum + abandonedNum;
+    const missedAndAbandoned = totalCallsNum - answeredNum;
 
-    const abandonRateRaw = row["Abandon Rate"] ?? "";
-    let abandonRate: number | string = "";
-    const match =
-      typeof abandonRateRaw === "string"
-        ? abandonRateRaw.match(/([\d.]+)%/)
-        : null;
-    if (match) {
-      abandonRate = parseFloat(match[1]) / 100;
-    }
+    const avgHandle = row["AVG Handle Time"] ?? "";
+    const avgWaitAnswered = row["AVG Waiting Time (Answered Calls)"] ?? "";
+    const avgWaitAll = row["AVG Waiting Time (All Calls)"] ?? "";
+    const maxWaitAll = row["Max Waiting Time (All Calls)"] ?? "";
+    const avgTalk = row["Average Talking Time"] ?? "";
+
+    const answeredRate = parsePercentToFraction(row["Answered Rate"]);
+    const abandonRate = parsePercentToFraction(row["Abandon Rate"]);
 
     aoa.push([
       index,
@@ -124,33 +130,36 @@ function buildSummarySheet(summaryRows: CsvRow[], detailRows: CsvRow[]) {
       totalCallsNum,
       answeredNum,
       missedAndAbandoned,
-      row["AVG Handle Time"] ?? "",
-      row["AVG Waiting Time (Answered Calls)"] ?? "",
-      row["AVG Waiting Time (All Calls)"] ?? "",
-      row["Max Waiting Time (All Calls)"] ?? "",
-      row["Average Talking Time"] ?? "",
+      avgHandle,
+      avgWaitAnswered,
+      avgWaitAll,
+      maxWaitAll,
+      avgTalk,
+      answeredRate,
       abandonRate,
-      "", // Sales Rate left for manual input for now
+      "",
     ]);
 
     totalCalls += totalCallsNum;
     index++;
   }
 
-  // Total row
   aoa.push([
-    "",
+    null,
     "Total",
     totalRow?.["Total Calls"] ?? totalCalls,
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
+    totalRow?.["Answered"] ?? null,
+    (Number(totalRow?.["Missed"] ?? 0) || 0) +
+      (Number(totalRow?.["Abandoned"] ?? 0) || 0) ||
+      null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -160,9 +169,8 @@ function buildSummarySheet(summaryRows: CsvRow[], detailRows: CsvRow[]) {
 }
 
 function buildDetailsSheet(detailRows: CsvRow[]) {
-  const aoa: (string | number)[][] = [];
+  const aoa: (string | number | null)[][] = [];
 
-  // Headers
   aoa.push([
     "Queue",
     "Answered",
@@ -185,43 +193,27 @@ function buildDetailsSheet(detailRows: CsvRow[]) {
     const waitAnswered = row["AVG Waiting Time (Answered Calls)"];
     const waitAll = row["AVG Waiting Time (All Calls)"];
 
-    // When Queue has a value and Total Calls looks numeric, it's a summary line (per branch)
+    // Summary line (one per queue at the top) - sets current branch and is skipped
     if (queueCell && queueCell.trim().length > 0) {
       currentQueueName = queueCell.trim();
       continue;
     }
 
-    // Skip header-like rows inside the detailed export
+    // Header-like line inside each queue block ("ID / Time / Call From / ...") - skip
     if (totalCalls === "ID" || answered === "Time" || missed === "Call From") {
       continue;
     }
 
-    // We only care about rows that look like actual calls
-    if (!answered || !missed || !abandoned) {
-      continue;
-    }
-
-    // Derive branch name from the "Abandoned" column if possible, e.g. "Qurtuba 1<776>"
-    let queueFromAbandoned: string | null = null;
-    if (typeof abandoned === "string") {
-      const match = abandoned.match(/^(.+?)</);
-      if (match) {
-        queueFromAbandoned = match[1].trim();
-      } else if (abandoned.toUpperCase() === "NONE" && currentQueueName) {
-        queueFromAbandoned = currentQueueName;
-      }
-    }
-
-    const queueName = queueFromAbandoned ?? currentQueueName ?? "";
+    const queueName = currentQueueName ?? "";
 
     aoa.push([
       queueName,
-      answered,
-      missed,
-      abandoned,
-      handle ?? "",
-      waitAnswered ?? "",
-      waitAll ?? "",
+      answered || null,
+      missed || null,
+      abandoned || null,
+      handle || null,
+      waitAnswered || null,
+      waitAll || null,
     ]);
   }
 
@@ -302,64 +294,59 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="min-h-screen w-full px-4 py-6 sm:px-8 lg:px-12">
+    <main className="min-h-screen w-full gaia-surface-soft px-4 py-8 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-4xl space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Accounts · Call Center Mirror Bot
+          <h1 className="text-2xl font-semibold tracking-tight gaia-strong">
+            Accounts - Call Center Mirror Bot
           </h1>
-          <p className="text-sm text-neutral-500">
-            Upload the two raw call center CSV exports and generate the
-            formatted{" "}
-            <span className="font-medium">Call Center Report</span> and{" "}
-            <span className="font-medium">Call Center Report Details</span>{" "}
+          <p className="text-sm gaia-muted">
+            Upload the two raw call center CSV exports and generate the formatted
+            <span className="font-medium text-[inherit]"> Call Center Report</span> and
+            <span className="font-medium text-[inherit]"> Call Center Report Details</span>{" "}
             workbooks automatically.
           </p>
         </header>
 
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-950/40 p-4 sm:p-6 shadow-lg shadow-black/40">
+        <section className="rounded-2xl border gaia-border gaia-panel-soft p-4 sm:p-6 shadow-sm">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-neutral-200">
+              <label className="text-sm font-semibold gaia-strong">
                 Summary CSV (per-branch totals)
               </label>
-              <p className="text-xs text-neutral-500">
-                This is the file that only has one row per Queue (branch),
-                usually the first download you get in the morning.
+              <p className="text-xs gaia-muted">
+                This is the file that only has one row per Queue (branch), usually the first download
+                you get in the morning.
               </p>
               <input
                 type="file"
                 accept=".csv"
-                onChange={(e) =>
-                  setSummaryFile(e.target.files?.[0] ?? null)
-                }
-                className="mt-2 block w-full cursor-pointer text-sm text-neutral-200 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-emerald-500"
+                onChange={(e) => setSummaryFile(e.target.files?.[0] ?? null)}
+                className="mt-2 block w-full cursor-pointer rounded-xl border gaia-border gaia-input text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--gaia-contrast-bg)] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[var(--gaia-contrast-text)] hover:file:opacity-90"
               />
               {summaryFile && (
-                <p className="mt-1 text-xs text-emerald-400">
+                <p className="mt-1 text-xs gaia-strong">
                   Selected: {summaryFile.name}
                 </p>
               )}
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm font-medium text-neutral-200">
+              <label className="text-sm font-semibold gaia-strong">
                 Detailed CSV (branch details + calls)
               </label>
-              <p className="text-xs text-neutral-500">
-                This is the file that contains the same queues on top, followed
-                by many rows with individual calls (ID, time, call from, etc.).
+              <p className="text-xs gaia-muted">
+                This is the file that contains the same queues on top, followed by many rows with
+                individual calls (ID, time, call from, etc.).
               </p>
               <input
                 type="file"
                 accept=".csv"
-                onChange={(e) =>
-                  setDetailsFile(e.target.files?.[0] ?? null)
-                }
-                className="mt-2 block w-full cursor-pointer text-sm text-neutral-200 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-emerald-500"
+                onChange={(e) => setDetailsFile(e.target.files?.[0] ?? null)}
+                className="mt-2 block w-full cursor-pointer rounded-xl border gaia-border gaia-input text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--gaia-contrast-bg)] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[var(--gaia-contrast-text)] hover:file:opacity-90"
               />
               {detailsFile && (
-                <p className="mt-1 text-xs text-emerald-400">
+                <p className="mt-1 text-xs gaia-strong">
                   Selected: {detailsFile.name}
                 </p>
               )}
@@ -368,12 +355,12 @@ export default function AccountsPage() {
 
           <div className="mt-6 grid gap-4 sm:grid-cols-[1fr,auto] sm:items-end">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-neutral-200">
+              <label className="text-sm font-semibold gaia-strong">
                 Month label for file names
               </label>
-              <p className="text-xs text-neutral-500">
-                Used only for the downloaded file names, e.g.{" "}
-                <code className="rounded bg-neutral-900 px-1.5 py-0.5 text-[11px]">
+              <p className="text-xs gaia-muted">
+                Used only for the downloaded file names, e.g.
+                <code className="ml-1 rounded bg-[color-mix(in_srgb,var(--gaia-surface)_92%,transparent)] px-1.5 py-0.5 text-[11px] gaia-strong">
                   Call Center Report-Nov&apos;2025.xlsx
                 </code>
                 .
@@ -382,7 +369,7 @@ export default function AccountsPage() {
                 type="text"
                 value={monthLabel}
                 onChange={(e) => setMonthLabel(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900/80 px-3 py-1.5 text-sm text-neutral-100 outline-none ring-emerald-500/60 focus:border-emerald-500 focus:ring-2"
+                className="mt-1 w-full rounded-xl border gaia-border gaia-input px-3 py-1.5 text-sm gaia-strong focus:outline-none gaia-focus"
                 placeholder="Nov'2025"
               />
             </div>
@@ -391,47 +378,41 @@ export default function AccountsPage() {
               type="button"
               onClick={handleGenerate}
               disabled={isProcessing || !summaryFile || !detailsFile}
-              className="inline-flex items-center justify-center rounded-xl border border-emerald-500/60 bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-emerald-500/30 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:border-neutral-700 disabled:bg-neutral-800 disabled:text-neutral-500"
+              className="inline-flex items-center justify-center rounded-xl gaia-contrast px-4 py-2 text-sm font-semibold shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isProcessing ? "Generating…" : "Generate Reports"}
+              {isProcessing ? "Generating..." : "Generate reports"}
             </button>
           </div>
 
           {error && (
-            <p className="mt-4 text-sm text-red-400">
+            <p className="mt-4 text-sm gaia-negative">
               {error}
             </p>
           )}
         </section>
 
-        <section className="rounded-2xl border border-neutral-900 bg-neutral-950/60 p-4 sm:p-5">
-          <h2 className="text-sm font-semibold text-neutral-200">
+        <section className="rounded-2xl border gaia-border gaia-panel-soft p-4 sm:p-5 shadow-sm">
+          <h2 className="text-sm font-semibold gaia-strong">
             How this works (current version)
           </h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-neutral-500">
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-xs gaia-muted">
             <li>
-              The summary CSV is used to build the{" "}
-              <span className="font-medium text-neutral-300">
-                Call Center Report
-              </span>{" "}
-              sheet with Sl No, branch, totals, and abandon rate (converted from
-              the percentage column).
+              The summary CSV is used to build the
+              <span className="font-medium text-[inherit]"> Call Center Report</span> sheet with the
+              same title row, column order and additional Answered / Abandon rates as your sample.
             </li>
             <li>
-              The detailed CSV is cleaned into the{" "}
-              <span className="font-medium text-neutral-300">
-                Call Center Report Details
-              </span>{" "}
-              sheet by extracting the branch name, call time, caller number, and
-              waiting times from each call row.
+              The detailed CSV is cleaned into the
+              <span className="font-medium text-[inherit]"> Call Center Report Details</span> sheet,
+              with one row per call and the same column order as your sample workbook.
             </li>
             <li>
-              Sales Rate is left empty for now so you can continue filling it
-              from your sales data the same way you do today.
+              Sales Rate is left empty for now so you can continue filling it from your sales data
+              the same way you do today.
             </li>
           </ul>
         </section>
       </div>
-    </div>
+    </main>
   );
 }
