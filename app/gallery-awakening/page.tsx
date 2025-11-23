@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { mockMediaItems } from './mockMedia';
 import { mockSyncState } from './mockSyncState';
 import type { MediaItem } from './mediaTypes';
@@ -12,6 +12,7 @@ import { FilterBar, SortMode } from './components/FilterBar';
 import { MemoryPulse } from './components/MemoryPulse';
 import { VersionLog } from './components/VersionLog';
 import { getAutoBoxResult } from './featureLogic';
+import { hasR2PublicBase } from './r2';
 
 type DataSource = 'none' | 'cache' | 'r2';
 
@@ -76,15 +77,34 @@ function formatLastUpdated(lastUpdated: string | null): string | null {
 const GalleryAwakeningPage: React.FC = () => {
   const { items, isLoading, source, lastUpdated } = useGalleryData(mockMediaItems);
 
+  const [localNewItems, setLocalNewItems] = useState<MediaItem[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>('recent');
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('image');
   const [page, setPage] = useState<number>(1);
   const [sidePanel, setSidePanel] = useState<SidePanel>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const mergedItems = useMemo(() => {
+    const merged = new Map<string, MediaItem>();
+    [...localNewItems, ...items].forEach((item) => merged.set(item.id, item));
+    return Array.from(merged.values());
+  }, [items, localNewItems]);
+
+  // Hide items that cannot render because there is no public R2 base URL
+  const allItems = useMemo(() => {
+    const allowR2 = hasR2PublicBase();
+    return mergedItems.filter((item) => {
+      if (item.r2Path && !allowR2) return false;
+      return true;
+    });
+  }, [mergedItems]);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
-    for (const item of items) {
+    for (const item of allItems) {
       if (item.tags) {
         for (const tag of item.tags) {
           tagSet.add(tag);
@@ -92,11 +112,11 @@ const GalleryAwakeningPage: React.FC = () => {
       }
     }
     return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
-  }, [items]);
+  }, [allItems]);
 
   const sorted = useMemo(
-    () => sortItems(items, sortMode),
-    [items, sortMode]
+    () => sortItems(allItems, sortMode),
+    [allItems, sortMode]
   );
 
   const filteredByTags = useMemo(
@@ -120,7 +140,7 @@ const GalleryAwakeningPage: React.FC = () => {
 
   const visibleItems = viewMode === 'image' ? images : videos;
 
-  const totalCount = items.length;
+  const totalCount = allItems.length;
   const imagesCount = images.length;
   const videosCount = videos.length;
 
@@ -149,6 +169,54 @@ const GalleryAwakeningPage: React.FC = () => {
   };
 
   const currentCollectionLabel = viewMode === 'image' ? 'Images' : 'Videos';
+
+  const handleClickUpload = () => {
+    setUploadError(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleFilesSelected = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploadError(null);
+    setIsUploading(true);
+    try {
+      const uploaded: MediaItem[] = [];
+      for (const file of Array.from(files)) {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('title', file.name.replace(/\.[^.]+$/, '') || 'Image');
+
+        const res = await fetch('/api/gallery/upload', {
+          method: 'POST',
+          body: form,
+        });
+
+        const data = (await res.json().catch(() => ({}))) as {
+          ok?: boolean;
+          item?: MediaItem;
+          error?: string;
+        };
+
+        if (!res.ok || !data.ok || !data.item) {
+          throw new Error(data.error || `Upload failed for ${file.name}`);
+        }
+
+        uploaded.push(data.item);
+      }
+
+      if (uploaded.length) {
+        setLocalNewItems((prev) => [...uploaded, ...prev]);
+        setPage(1);
+      }
+    } catch (error: any) {
+      setUploadError(error?.message ?? 'Failed to upload image.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   return (
     <main className="relative min-h-screen">
@@ -317,30 +385,53 @@ const GalleryAwakeningPage: React.FC = () => {
                 lastUpdated={computedLastUpdated}
                 isLoading={isLoading}
               />
-              <div className="flex items-center justify-end gap-2 rounded-2xl border border-base-300 bg-base-200 px-2 py-1 text-[11px] text-base-content">
-                <span className="px-2 text-base-content/70">Collection</span>
-                <button
-                  type="button"
-                  onClick={() => handleChangeViewMode('image')}
-                  className={`rounded-2xl px-3 py-1 font-medium ${
-                    viewMode === 'image'
-                      ? 'bg-primary/20 text-primary'
-                      : 'text-base-content/70 hover:text-base-content'
-                  }`}
-                >
-                  Images
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleChangeViewMode('video')}
-                  className={`rounded-2xl px-3 py-1 font-medium ${
-                    viewMode === 'video'
-                      ? 'bg-primary/20 text-primary'
-                      : 'text-base-content/70 hover:text-base-content'
-                  }`}
-                >
-                  Videos
-                </button>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center justify-end gap-2 rounded-2xl border border-base-300 bg-base-200 px-2 py-1 text-[11px] text-base-content">
+                  <span className="px-2 text-base-content/70">Collection</span>
+                  <button
+                    type="button"
+                    onClick={() => handleChangeViewMode('image')}
+                    className={`rounded-2xl px-3 py-1 font-medium ${
+                      viewMode === 'image'
+                        ? 'bg-primary/20 text-primary'
+                        : 'text-base-content/70 hover:text-base-content'
+                    }`}
+                  >
+                    Images
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleChangeViewMode('video')}
+                    className={`rounded-2xl px-3 py-1 font-medium ${
+                      viewMode === 'video'
+                        ? 'bg-primary/20 text-primary'
+                        : 'text-base-content/70 hover:text-base-content'
+                    }`}
+                  >
+                    Videos
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFilesSelected(e.target.files)}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleClickUpload}
+                    disabled={isUploading}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-content shadow-md shadow-primary/40 transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isUploading ? 'Uploading…' : '+ Add image'}
+                  </button>
+                  {uploadError && (
+                    <span className="text-[11px] text-error">{uploadError}</span>
+                  )}
+                </div>
               </div>
             </div>
 

@@ -16,6 +16,10 @@ const base =
   process.env.NEXT_PUBLIC_GAIA_GALLERY_URL ||
   process.env.NEXT_PUBLIC_GAIA_GALLERY_FALLBACK;
 
+export function hasR2PublicBase(): boolean {
+  return Boolean(base && typeof base === 'string');
+}
+
 /**
  * Turn an R2 object key into a URL, or fall back to an API proxy path.
  */
