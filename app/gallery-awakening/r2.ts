@@ -16,21 +16,44 @@ const base =
   process.env.NEXT_PUBLIC_GAIA_GALLERY_URL ||
   process.env.NEXT_PUBLIC_GAIA_GALLERY_FALLBACK;
 
+const previewBase =
+  process.env.NEXT_PUBLIC_GAIA_PREVIEWS_URL ||
+  process.env.NEXT_PUBLIC_R2_PREVIEWS_BASE_URL ||
+  base;
+
 export function hasR2PublicBase(): boolean {
   return Boolean(base && typeof base === 'string');
+}
+
+export function hasR2PreviewBase(): boolean {
+  return Boolean(previewBase && typeof previewBase === 'string');
+}
+
+function buildR2Url(key: string, customBase?: string): string {
+  if (!key) return '/placeholder-gallery-image.png';
+
+  const effectiveBase = customBase || base;
+  if (effectiveBase && typeof effectiveBase === 'string') {
+    const trimmedBase = effectiveBase.replace(/\/$/, '');
+    const normalizedKey = key.replace(/^\/+/, '');
+    return `${trimmedBase}/${normalizedKey}`;
+  }
+
+  // Fallback: you can implement this API route later if you prefer a proxy.
+  return `/api/r2-proxy?key=${encodeURIComponent(key)}`;
 }
 
 /**
  * Turn an R2 object key into a URL, or fall back to an API proxy path.
  */
 export function getR2Url(key: string): string {
-  if (!key) return '/placeholder-gallery-image.png';
+  return buildR2Url(key, base);
+}
 
-  if (base && typeof base === 'string') {
-    const trimmedBase = base.replace(/\/$/, '');
-    return `${trimmedBase}/${key}`;
-  }
-
-  // Fallback: you can implement this API route later if you prefer a proxy.
-  return `/api/r2-proxy?key=${encodeURIComponent(key)}`;
+/**
+ * Dedicated helper for preview frames (separate bucket/CDN).
+ * Falls back to the main R2 base when a preview CDN isn't set.
+ */
+export function getR2PreviewUrl(key: string): string {
+  return buildR2Url(key, previewBase);
 }

@@ -49,12 +49,48 @@ function extractFirstDateFromDetails(detailRows: CsvRow[]): string | null {
 }
 
 /**
- * From the detailed CSV, count how many calls were answered by
- * Call Center<887> and Call Center<888>.
+ * Some rows are technically "Abandoned" in the raw export but later
+ * handled by Call Center 887/888. In those rows:
+ *
+ * - Abandoned column = "NONE"
+ * - Status column (AVG Handle Time) looks like
+ *   "Abandoned(Handled/Call Center(887)/22/11/2025 01:52:03 PM)"
+ *
+ * For GAIA we want to credit these to the Call Center, so we
+ * rewrite the Abandoned column to "Call Center<887>" or "Call Center<888>"
+ * BEFORE we do any counting / sheet building.
+ */
+function normalizeDetailRows(detailRows: CsvRow[]): CsvRow[] {
+  return detailRows.map((row) => {
+    const next = { ...row };
+    const abandoned = (next["Abandoned"] ?? "").trim().toUpperCase();
+    const status = (next["AVG Handle Time"] ?? "").trim();
+
+    const handled887 = /Handled\s*\/\s*Call Center\(887\)/i.test(status);
+    const handled888 = /Handled\s*\/\s*Call Center\(888\)/i.test(status);
+
+    if (abandoned === "NONE" && handled887) {
+      next["Abandoned"] = "Call Center<887>";
+    } else if (abandoned === "NONE" && handled888) {
+      next["Abandoned"] = "Call Center<888>";
+    }
+
+    return next;
+  });
+}
+
+/**
+ * From the detailed CSV, count how many calls should be credited to
+ * Call Center <887-Sara> and <888-Sansa>.
  *
  * In the CSV layout:
  * - "Abandoned" column actually holds the Agent for detailed rows
- * - "AVG Handle Time" holds the Status ("Answered", "Abandoned(UnHandled//)", etc.)
+ * - "AVG Handle Time" holds the Status ("Answered", "Abandoned(...)", etc.)
+ *
+ * We count as Call Center work when:
+ * - Agent is Call Center<887>/<888>
+ * - AND status is either "Answered" OR a handled callback like
+ *   "Abandoned(Handled/Call Center(887)/...)".
  */
 function computeCallCenterCounts(detailRows: CsvRow[]) {
   let sarah = 0;
@@ -64,11 +100,21 @@ function computeCallCenterCounts(detailRows: CsvRow[]) {
     const agent = (row["Abandoned"] ?? "").trim();
     const status = (row["AVG Handle Time"] ?? "").trim();
 
-    if (status !== "Answered") continue;
+    const isCallCenter887 =
+      agent === "Call Center<887>" || /Call Center\(887\)/.test(status);
+    const isCallCenter888 =
+      agent === "Call Center<888>" || /Call Center\(888\)/.test(status);
 
-    if (agent === "Call Center<887>") {
+    const isAnswered =
+      status === "Answered" ||
+      /Abandoned\(Handled\s*\/\s*Call Center\(887\)/.test(status) ||
+      /Abandoned\(Handled\s*\/\s*Call Center\(888\)/.test(status);
+
+    if (!isAnswered) continue;
+
+    if (isCallCenter887) {
       sarah++;
-    } else if (agent === "Call Center<888>") {
+    } else if (isCallCenter888) {
       steffi++;
     }
   }
@@ -143,7 +189,6 @@ function copyRowStyle(
     const srcCell: any = (ws as any)[srcRef];
     if (!srcCell || !srcCell.s) continue;
     const dstCell: any = (ws as any)[dstRef] || {};
-    // Deep clone style object so we don't accidentally share references
     dstCell.s = JSON.parse(JSON.stringify(srcCell.s));
     (ws as any)[dstRef] = dstCell;
   }
@@ -156,9 +201,11 @@ function copyRowStyle(
  * - Header row (background, borders, wrap)
  * - Some preformatted data rows + Total row + chart
  *
- * We only overwrite the cell values, never styles/merges/chart,
- * except that we sometimes copy style from a nearby row so
- * background colors stay consistent (e.g. Sara / Sansa rows).
+ * NOTE: The open-source XLSX library GAIA uses can read styles
+ * but cannot reliably write them back. That means complex
+ * formatting (theme fills, chart styling, etc.) may not be
+ * 100% preserved on save, even though we start from your template.
+ * The numbers and layout will match; very fine styling might differ.
  */
 function fillSummaryTemplateWorkbook(
   wb: XLSX.WorkBook,
@@ -177,7 +224,6 @@ function fillSummaryTemplateWorkbook(
       : `Call Center-Report-${monthLabel}`;
 
   setCellValue(ws, 0, 0, title);
-  // Force center alignment on merged title row (row 0, columns 0..12)
   ensureCenterAlignmentForRow(ws, 0, 0, 12, false);
 
   // Rows from summary
@@ -225,10 +271,8 @@ function fillSummaryTemplateWorkbook(
     setCellValue(ws, rowIndex, 7, row["AVG Waiting Time (All Calls)"] ?? "");
     setCellValue(ws, rowIndex, 8, row["Max Waiting Time (All Calls)"] ?? "");
     setCellValue(ws, rowIndex, 9, row["Average Talking Time"] ?? "");
-    // Keep percentage text exactly as in source (e.g. "67.14%")
     setCellValue(ws, rowIndex, 10, answeredRateRaw || null);
     setCellValue(ws, rowIndex, 11, abandonRateRaw || null);
-    // Sales Rate left for manual input
     setCellValue(ws, rowIndex, 12, null);
 
     totalCallsFromBranches += totalCallsNum;
@@ -244,11 +288,9 @@ function fillSummaryTemplateWorkbook(
   setCellValue(ws, sarahRowIndex, 1, "Call Center <887-Sara>");
   setCellValue(ws, sarahRowIndex, 2, sarah);
   for (let c = 3; c <= 12; c++) setCellValue(ws, sarahRowIndex, c, null);
-  // Copy background/borders from the last branch row to keep the same "background"
   if (lastBranchRowIndex >= 2) {
     copyRowStyle(ws, lastBranchRowIndex, sarahRowIndex, 0, 12);
   }
-  // Center this whole row (matches your merged+center look)
   ensureCenterAlignmentForRow(ws, sarahRowIndex, 0, 12, false);
   rowIndex++;
   sl++;
@@ -286,7 +328,6 @@ function fillSummaryTemplateWorkbook(
       ? totalMissed + totalAbandoned
       : null;
 
-  // Column A left empty, B = "Total"
   setCellValue(ws, rowIndex, 0, null);
   setCellValue(ws, rowIndex, 1, "Total");
   setCellValue(ws, rowIndex, 2, totalCalls);
@@ -298,17 +339,20 @@ function fillSummaryTemplateWorkbook(
 }
 
 function buildDetailsSheet(detailRows: CsvRow[]) {
+  // We build a clean details sheet – column order matches your
+  // November details workbook, with queue + call data.
   const aoa: (string | number | null)[][] = [];
 
-  // Headers
   aoa.push([
     "Queue",
     "Answered",
     "Missed",
-    "Abandoned",
-    "AVG Handle Time",
-    "AVG Waiting Time (Answered Calls)",
-    "AVG Waiting Time (All Calls)",
+    "Abandoned / Agent",
+    "Status",
+    "Ring Duration",
+    "Talk Duration",
+    "Hold Duration",
+    "Reason"
   ]);
 
   let currentQueueName: string | null = null;
@@ -319,9 +363,10 @@ function buildDetailsSheet(detailRows: CsvRow[]) {
     const answered = row["Answered"];
     const missed = row["Missed"];
     const abandoned = row["Abandoned"];
-    const handle = row["AVG Handle Time"];
-    const waitAnswered = row["AVG Waiting Time (Answered Calls)"];
-    const waitAll = row["AVG Waiting Time (All Calls)"];
+    const status = row["AVG Handle Time"];
+    const ring = row["AVG Waiting Time (Answered Calls)"];
+    const talk = row["Average Talking Time"];
+    const reason = row["AVG Hold Time"] ?? "";
 
     // Summary lines (per branch)
     if (queueCell && queueCell.trim().length > 0) {
@@ -339,29 +384,36 @@ function buildDetailsSheet(detailRows: CsvRow[]) {
       continue;
     }
 
-    // Derive branch name from "Abandoned" when it looks like "Dasman<333>"
-    let queueFromAbandoned: string | null = null;
-    if (typeof abandoned === "string" && abandoned) {
-      const match = abandoned.match(/^(.+?)</);
-      if (match) {
-        queueFromAbandoned = match[1].trim();
-      }
-    }
-
-    const queueName = queueFromAbandoned ?? currentQueueName ?? "";
+    const queueName = currentQueueName ?? "";
 
     aoa.push([
       queueName,
       answered,
       missed ?? null,
       abandoned ?? null,
-      handle ?? null,
-      waitAnswered ?? null,
-      waitAll ?? null,
+      status ?? null,
+      ring ?? null,
+      row["AVG Waiting Time (All Calls)"] ?? null,
+      talk ?? null,
+      reason || null
     ]);
   }
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Make columns a bit wider so the sheet is not "squished"
+  ws["!cols"] = [
+    { wch: 18 }, // Queue
+    { wch: 22 }, // Answered (date+time)
+    { wch: 14 }, // Missed (number)
+    { wch: 24 }, // Agent
+    { wch: 30 }, // Status
+    { wch: 14 }, // Ring duration
+    { wch: 14 }, // Talk duration
+    { wch: 14 }, // Hold duration
+    { wch: 40 }  // Reason
+  ];
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Call Center Details");
   return wb;
@@ -415,7 +467,8 @@ export default function AccountsPage() {
       ]);
 
       const summaryRows = parseCsv(summaryText);
-      const detailRows = parseCsv(detailsText);
+      const rawDetailRows = parseCsv(detailsText);
+      const detailRows = normalizeDetailRows(rawDetailRows);
 
       if (summaryRows.length === 0 || detailRows.length === 0) {
         setError("One of the CSV files appears to be empty.");
@@ -561,17 +614,24 @@ export default function AccountsPage() {
               <code className="rounded bg-neutral-900 px-1.5 py-0.5 text-[11px]">
                 public/templates/CallCenterReportTemplate.xlsx
               </code>
-              , so merged cells, borders, and layout come from that file.
+              . Layout, merged cells, borders and chart all start from that file.
             </li>
             <li>
-              Only the values in the data area (branches, Call Center Sara/Sansa
-              rows, and Total row) and the title text are updated from the CSVs.
-              Answered Rate and Abandon Rate are kept as percentage text (e.g.
-              67.14%).
+              GAIA only rewrites the values in the branch rows, Call Center
+              rows, and Total row. Answered Rate and Abandon Rate are kept as
+              percentage text (e.g. 67.14%).
             </li>
             <li>
-              The details workbook is still generated programmatically with a
-              clean table layout matching your current columns.
+              Call Center callbacks where the raw export shows
+              <code className="mx-1 rounded bg-neutral-900 px-1 py-0.5 text-[11px]">
+                NONE
+              </code>
+              but status
+              <code className="mx-1 rounded bg-neutral-900 px-1 py-0.5 text-[11px]">
+                Abandoned(Handled/Call Center(887)...
+              </code>
+              are credited to Call Center &lt;887&gt; in both the summary and
+              details sheets.
             </li>
           </ul>
         </section>

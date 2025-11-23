@@ -56,7 +56,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
         </p>
       </header>
 
-      <div className="columns-1 gap-4 sm:columns-2 md:columns-3">
+      <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
         {paged.map((item) => (
           <div key={item.id} className="mb-4 break-inside-avoid">
             <MediaCard item={item} onPreview={item.type === 'image' ? handleOpen : undefined} />
