@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useMemo } from 'react';
-import type { MediaItem } from '../mediaTypes';
-import { formatMediaTitle } from '../formatMediaTitle';
-import { getR2Url } from '../r2';
-import { recordViewDuration } from '../viewTracker';
+import React, { useEffect, useMemo } from "react";
+import type { MediaItem } from "../mediaTypes";
+import { formatMediaTitle } from "../formatMediaTitle";
+import { getR2Url } from "../r2";
+import { recordViewDuration } from "../viewTracker";
 
 interface MediaLightboxProps {
   items: MediaItem[];
@@ -19,10 +19,7 @@ export const MediaLightbox: React.FC<MediaLightboxProps> = ({
   onClose,
   onChange,
 }) => {
-  const ordered = useMemo(
-    () => items.filter((i) => i.type === 'image'),
-    [items]
-  );
+  const ordered = useMemo(() => items.filter((i) => i.type === "image"), [items]);
 
   const currentIndex = ordered.findIndex((i) => i.id === activeId);
   const current = currentIndex >= 0 ? ordered[currentIndex] : null;
@@ -40,6 +37,14 @@ export const MediaLightbox: React.FC<MediaLightboxProps> = ({
   };
 
   useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  useEffect(() => {
     const start = Date.now();
     return () => {
       const elapsedSec = (Date.now() - start) / 1000;
@@ -51,26 +56,26 @@ export const MediaLightbox: React.FC<MediaLightboxProps> = ({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowLeft') gotoPrev();
-      if (e.key === 'ArrowRight') gotoNext();
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") gotoPrev();
+      if (e.key === "ArrowRight") gotoNext();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   });
 
   if (!current) return null;
 
   const displayTitle = formatMediaTitle(current.title);
-  const normalizedLocal = current.localPath
-    ? `/${current.localPath.replace(/^\/+/, '')}`
-    : '';
-  const src = current.r2Path
-    ? getR2Url(current.r2Path)
-    : normalizedLocal || '/placeholder-gallery-image.png';
+  const normalizedLocal = current.localPath ? `/${current.localPath.replace(/^\/+/, "")}` : "";
+  const src = current.r2Path ? getR2Url(current.r2Path) : normalizedLocal || "/placeholder-gallery-image.png";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 flex h-screen w-screen items-center justify-center bg-black/80 px-2 py-2 backdrop-blur-sm"
+      onClick={onClose}
+      role="presentation"
+    >
       <button
         type="button"
         className="absolute right-5 top-5 rounded-full bg-base-100/80 px-3 py-1 text-sm font-semibold text-base-content shadow hover:bg-base-200"
@@ -81,18 +86,24 @@ export const MediaLightbox: React.FC<MediaLightboxProps> = ({
 
       <button
         type="button"
-        onClick={gotoPrev}
+        onClick={(e) => {
+          e.stopPropagation();
+          gotoPrev();
+        }}
         className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-base-100/80 px-3 py-2 text-base font-semibold text-base-content shadow hover:bg-base-200"
         aria-label="Previous image"
       >
-        ‹
+        ←
       </button>
 
-      <figure className="max-h-[90vh] max-w-5xl space-y-3 text-center">
+      <figure
+        className="m-0 flex max-h-[90vh] max-w-[90vw] flex-col items-center justify-center gap-3 text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
         <img
           src={src}
           alt={displayTitle}
-          className="mx-auto max-h-[80vh] max-w-full rounded-xl object-contain"
+          className="mx-auto max-h-[75vh] max-w-full rounded-xl object-contain"
         />
         <figcaption className="text-sm text-base-content">
           {displayTitle}
@@ -101,11 +112,14 @@ export const MediaLightbox: React.FC<MediaLightboxProps> = ({
 
       <button
         type="button"
-        onClick={gotoNext}
+        onClick={(e) => {
+          e.stopPropagation();
+          gotoNext();
+        }}
         className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-base-100/80 px-3 py-2 text-base font-semibold text-base-content shadow hover:bg-base-200"
         aria-label="Next image"
       >
-        ›
+        →
       </button>
     </div>
   );

@@ -109,6 +109,46 @@ function setCellValue(
   (ws as any)[ref] = cell;
 }
 
+function ensureCenterAlignmentForRow(
+  ws: XLSX.WorkSheet,
+  r: number,
+  startCol: number,
+  endCol: number,
+  wrap: boolean = false
+) {
+  for (let c = startCol; c <= endCol; c++) {
+    const ref = XLSX.utils.encode_cell({ r, c });
+    const cell: any = (ws as any)[ref];
+    if (!cell) continue;
+    if (!cell.s) cell.s = {};
+    if (!cell.s.alignment) cell.s.alignment = {};
+    cell.s.alignment.horizontal = "center";
+    cell.s.alignment.vertical = "center";
+    if (wrap) {
+      cell.s.alignment.wrapText = true;
+    }
+  }
+}
+
+function copyRowStyle(
+  ws: XLSX.WorkSheet,
+  srcRow: number,
+  dstRow: number,
+  startCol: number,
+  endCol: number
+) {
+  for (let c = startCol; c <= endCol; c++) {
+    const srcRef = XLSX.utils.encode_cell({ r: srcRow, c });
+    const dstRef = XLSX.utils.encode_cell({ r: dstRow, c });
+    const srcCell: any = (ws as any)[srcRef];
+    if (!srcCell || !srcCell.s) continue;
+    const dstCell: any = (ws as any)[dstRef] || {};
+    // Deep clone style object so we don't accidentally share references
+    dstCell.s = JSON.parse(JSON.stringify(srcCell.s));
+    (ws as any)[dstRef] = dstCell;
+  }
+}
+
 /**
  * Fills an existing formatted summary template workbook.
  * The template should already contain:
@@ -116,7 +156,9 @@ function setCellValue(
  * - Header row (background, borders, wrap)
  * - Some preformatted data rows + Total row + chart
  *
- * We only overwrite the cell values, never styles/merges/chart.
+ * We only overwrite the cell values, never styles/merges/chart,
+ * except that we sometimes copy style from a nearby row so
+ * background colors stay consistent (e.g. Sara / Sansa rows).
  */
 function fillSummaryTemplateWorkbook(
   wb: XLSX.WorkBook,
@@ -135,6 +177,8 @@ function fillSummaryTemplateWorkbook(
       : `Call Center-Report-${monthLabel}`;
 
   setCellValue(ws, 0, 0, title);
+  // Force center alignment on merged title row (row 0, columns 0..12)
+  ensureCenterAlignmentForRow(ws, 0, 0, 12, false);
 
   // Rows from summary
   const branches = summaryRows.filter((row) => {
@@ -192,19 +236,33 @@ function fillSummaryTemplateWorkbook(
     sl++;
   }
 
+  const lastBranchRowIndex = rowIndex - 1;
+
   // Call Center <887-Sara>
-  setCellValue(ws, rowIndex, 0, sl);
-  setCellValue(ws, rowIndex, 1, "Call Center <887-Sara>");
-  setCellValue(ws, rowIndex, 2, sarah);
-  for (let c = 3; c <= 12; c++) setCellValue(ws, rowIndex, c, null);
+  const sarahRowIndex = rowIndex;
+  setCellValue(ws, sarahRowIndex, 0, sl);
+  setCellValue(ws, sarahRowIndex, 1, "Call Center <887-Sara>");
+  setCellValue(ws, sarahRowIndex, 2, sarah);
+  for (let c = 3; c <= 12; c++) setCellValue(ws, sarahRowIndex, c, null);
+  // Copy background/borders from the last branch row to keep the same "background"
+  if (lastBranchRowIndex >= 2) {
+    copyRowStyle(ws, lastBranchRowIndex, sarahRowIndex, 0, 12);
+  }
+  // Center this whole row (matches your merged+center look)
+  ensureCenterAlignmentForRow(ws, sarahRowIndex, 0, 12, false);
   rowIndex++;
   sl++;
 
   // Call Center <888-Sansa>
-  setCellValue(ws, rowIndex, 0, sl);
-  setCellValue(ws, rowIndex, 1, "Call Center <888-Sansa>");
-  setCellValue(ws, rowIndex, 2, steffi);
-  for (let c = 3; c <= 12; c++) setCellValue(ws, rowIndex, c, null);
+  const sansaRowIndex = rowIndex;
+  setCellValue(ws, sansaRowIndex, 0, sl);
+  setCellValue(ws, sansaRowIndex, 1, "Call Center <888-Sansa>");
+  setCellValue(ws, sansaRowIndex, 2, steffi);
+  for (let c = 3; c <= 12; c++) setCellValue(ws, sansaRowIndex, c, null);
+  if (lastBranchRowIndex >= 2) {
+    copyRowStyle(ws, lastBranchRowIndex, sansaRowIndex, 0, 12);
+  }
+  ensureCenterAlignmentForRow(ws, sansaRowIndex, 0, 12, false);
   rowIndex++;
 
   // Total row (assume it's the next formatted row in the template)
@@ -422,7 +480,7 @@ export default function AccountsPage() {
                 onChange={(e) =>
                   setSummaryFile(e.target.files?.[0] ?? null)
                 }
-                className="mt-2 block w-full cursor-pointer text-sm text-neutral-200 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-emerald-500"
+                className="mt-2 block w-full cursor-pointer text-sm text-neutral-200 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:text-sm text-white hover:file:bg-emerald-500"
               />
               {summaryFile && (
                 <p className="mt-1 text-xs text-emerald-400">
@@ -445,7 +503,7 @@ export default function AccountsPage() {
                 onChange={(e) =>
                   setDetailsFile(e.target.files?.[0] ?? null)
                 }
-                className="mt-2 block w-full cursor-pointer text-sm text-neutral-200 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:text-sm font-medium file:text-white hover:file:bg-emerald-500"
+                className="mt-2 block w-full cursor-pointer text-sm text-neutral-200 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:text-sm text-white hover:file:bg-emerald-500"
               />
               {detailsFile && (
                 <p className="mt-1 text-xs text-emerald-400">

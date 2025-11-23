@@ -15,7 +15,7 @@ const THEME_OPTIONS = THEMES.map((value) => ({
 }));
 
 export default function ThemeCard() {
-  const { theme, setTheme } = useDesign();
+  const { theme, setTheme, brightness, setBrightness } = useDesign();
   const [mode, setMode] = useState<"light" | "dark" | "auto">("auto");
   const [accent, setAccent] = useState("#111111");
   const [scale, setScale] = useState(100);
@@ -113,6 +113,24 @@ export default function ThemeCard() {
             onChange={(e) => setAccent(e.target.value)}
             className="gaia-border h-8 w-14 rounded border"
           />
+        </label>
+
+        <label className="gaia-panel-soft flex items-center justify-between gap-3 rounded-lg border p-3">
+          <span className="text-sm">Background brightness</span>
+          <div className="flex flex-1 items-center gap-3">
+            <input
+              type="range"
+              min={0.5}
+              max={1.1}
+              step={0.05}
+              value={brightness}
+              onChange={(e) => setBrightness(parseFloat(e.target.value))}
+              className="flex-1"
+            />
+            <span className="w-10 text-right text-xs gaia-muted">
+              {brightness.toFixed(2)}x
+            </span>
+          </div>
         </label>
 
         <label className="gaia-panel-soft flex items-center justify-between gap-3 rounded-lg border p-3">
