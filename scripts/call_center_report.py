@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from openpyxl import load_workbook, Workbook
+from openpyxl.cell.cell import MergedCell
 
 
 def read_csv_rows(path):
@@ -22,6 +23,11 @@ def extract_first_date_from_details(detail_rows):
 
 
 def normalize_detail_rows(detail_rows):
+    """
+    If Abandoned is NONE but status shows Abandoned(Handled/Call Center(887/888)),
+    change Abandoned to Call Center<887> / Call Center<888> so they are credited
+    properly in counts.
+    """
     out = []
     for row in detail_rows:
         new_row = dict(row)
@@ -41,6 +47,9 @@ def normalize_detail_rows(detail_rows):
 
 
 def compute_call_center_counts(detail_rows):
+    """
+    Count calls that should be credited to Call Center 887 / 888.
+    """
     sarah = 0
     steffi = 0
 
@@ -68,6 +77,17 @@ def compute_call_center_counts(detail_rows):
     return sarah, steffi
 
 
+def set_cell_value(ws, row, column, value):
+    """
+    Safely set a cell value, skipping cells that are part of a merged range
+    but are not the top-left anchor (those are read-only in openpyxl).
+    """
+    cell = ws.cell(row=row, column=column)
+    if isinstance(cell, MergedCell):
+        return
+    cell.value = value
+
+
 def fill_summary_template(summary_csv, detail_csv, template_path, output_path):
     summary_rows = read_csv_rows(summary_csv)
     raw_detail_rows = read_csv_rows(detail_csv)
@@ -79,6 +99,7 @@ def fill_summary_template(summary_csv, detail_csv, template_path, output_path):
     wb = load_workbook(template_path)
     ws = wb.worksheets[0]
 
+    # Title
     date_label = extract_first_date_from_details(detail_rows)
     if date_label:
         title = f"Call Center-Report-{date_label}"
@@ -86,8 +107,9 @@ def fill_summary_template(summary_csv, detail_csv, template_path, output_path):
         label = Path(summary_csv).stem
         title = f"Call Center-Report-{label}"
 
-    ws.cell(row=1, column=1).value = title
+    set_cell_value(ws, 1, 1, title)
 
+    # Separate branches and total
     branches = []
     total_row = None
     for row in summary_rows:
@@ -102,7 +124,7 @@ def fill_summary_template(summary_csv, detail_csv, template_path, output_path):
 
     sarah_count, steffi_count = compute_call_center_counts(detail_rows)
 
-    row_index = 3
+    row_index = 3  # Excel row 3
     sl = 1
     total_calls_from_branches = 0
 
@@ -116,39 +138,42 @@ def fill_summary_template(summary_csv, detail_csv, template_path, output_path):
         answered_rate = row.get("Answered Rate") or ""
         abandon_rate = row.get("Abandon Rate") or ""
 
-        ws.cell(row=row_index, column=1).value = sl
-        ws.cell(row=row_index, column=2).value = row.get("Queue") or ""
-        ws.cell(row=row_index, column=3).value = total_calls
-        ws.cell(row=row_index, column=4).value = answered
-        ws.cell(row=row_index, column=5).value = missed_abandoned
-        ws.cell(row=row_index, column=6).value = row.get("AVG Handle Time") or ""
-        ws.cell(row=row_index, column=7).value = row.get("AVG Waiting Time (Answered Calls)") or ""
-        ws.cell(row=row_index, column=8).value = row.get("AVG Waiting Time (All Calls)") or ""
-        ws.cell(row=row_index, column=9).value = row.get("Max Waiting Time (All Calls)") or ""
-        ws.cell(row=row_index, column=10).value = row.get("Average Talking Time") or ""
-        ws.cell(row=row_index, column=11).value = answered_rate or None
-        ws.cell(row=row_index, column=12).value = abandon_rate or None
-        ws.cell(row=row_index, column=13).value = None
+        set_cell_value(ws, row_index, 1, sl)
+        set_cell_value(ws, row_index, 2, row.get("Queue") or "")
+        set_cell_value(ws, row_index, 3, total_calls)
+        set_cell_value(ws, row_index, 4, answered)
+        set_cell_value(ws, row_index, 5, missed_abandoned)
+        set_cell_value(ws, row_index, 6, row.get("AVG Handle Time") or "")
+        set_cell_value(ws, row_index, 7, row.get("AVG Waiting Time (Answered Calls)") or "")
+        set_cell_value(ws, row_index, 8, row.get("AVG Waiting Time (All Calls)") or "")
+        set_cell_value(ws, row_index, 9, row.get("Max Waiting Time (All Calls)") or "")
+        set_cell_value(ws, row_index, 10, row.get("Average Talking Time") or "")
+        set_cell_value(ws, row_index, 11, answered_rate or None)
+        set_cell_value(ws, row_index, 12, abandon_rate or None)
+        set_cell_value(ws, row_index, 13, None)  # Sales Rate left for manual input
 
         total_calls_from_branches += total_calls
         row_index += 1
         sl += 1
 
-    ws.cell(row=row_index, column=1).value = sl
-    ws.cell(row=row_index, column=2).value = "Call Center <887-Sara>"
-    ws.cell(row=row_index, column=3).value = sarah_count
+    # Call Center <887-Sara>
+    set_cell_value(ws, row_index, 1, sl)
+    set_cell_value(ws, row_index, 2, "Call Center <887-Sara>")
+    set_cell_value(ws, row_index, 3, sarah_count)
     for col in range(4, 14):
-        ws.cell(row=row_index, column=col).value = None
+        set_cell_value(ws, row_index, col, None)
     row_index += 1
     sl += 1
 
-    ws.cell(row=row_index, column=1).value = sl
-    ws.cell(row=row_index, column=2).value = "Call Center <888-Sansa>"
-    ws.cell(row=row_index, column=3).value = steffi_count
+    # Call Center <888-Sansa>
+    set_cell_value(ws, row_index, 1, sl)
+    set_cell_value(ws, row_index, 2, "Call Center <888-Sansa>")
+    set_cell_value(ws, row_index, 3, steffi_count)
     for col in range(4, 14):
-        ws.cell(row=row_index, column=col).value = None
+        set_cell_value(ws, row_index, col, None)
     row_index += 1
 
+    # Total row (overwrite position in template)
     if total_row is not None:
         total_calls = int(total_row.get("Total Calls") or 0)
         total_answered = int(total_row.get("Answered") or 0)
@@ -160,18 +185,22 @@ def fill_summary_template(summary_csv, detail_csv, template_path, output_path):
         total_answered = None
         total_missed_abandoned = None
 
-    ws.cell(row=row_index, column=1).value = None
-    ws.cell(row=row_index, column=2).value = "Total"
-    ws.cell(row=row_index, column=3).value = total_calls
-    ws.cell(row=row_index, column=4).value = total_answered
-    ws.cell(row=row_index, column=5).value = total_missed_abandoned
+    set_cell_value(ws, row_index, 1, None)
+    set_cell_value(ws, row_index, 2, "Total")
+    set_cell_value(ws, row_index, 3, total_calls)
+    set_cell_value(ws, row_index, 4, total_answered)
+    set_cell_value(ws, row_index, 5, total_missed_abandoned)
     for col in range(6, 14):
-        ws.cell(row=row_index, column=col).value = None
+        set_cell_value(ws, row_index, col, None)
 
     wb.save(output_path)
 
 
 def build_details_workbook(detail_csv, output_path):
+    """
+    Build a clean details workbook from the raw detailed CSV.
+    Uses the same normalisation logic as the summary.
+    """
     raw_rows = read_csv_rows(detail_csv)
     detail_rows = normalize_detail_rows(raw_rows)
 
@@ -205,10 +234,12 @@ def build_details_workbook(detail_csv, output_path):
         all_wait = row.get("AVG Waiting Time (All Calls)") or ""
         talking = row.get("Average Talking Time") or ""
 
+        # Summary header per queue
         if queue_cell:
             current_queue = queue_cell
             continue
 
+        # Skip internal header rows
         if total_calls == "ID" or answered == "Time" or missed == "Call From":
             continue
 
@@ -227,6 +258,7 @@ def build_details_workbook(detail_csv, output_path):
             talking,
         ])
 
+    # Column widths for readability
     ws.column_dimensions["A"].width = 18
     ws.column_dimensions["B"].width = 22
     ws.column_dimensions["C"].width = 14
