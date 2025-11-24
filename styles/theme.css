@@ -1169,3 +1169,27 @@ html[data-theme="daisybolt"] {
   --gaia-negative: #ef476f;
   --gaia-info: #208bff;
 }
+
+html[data-theme="daisysoft"] {
+  color-scheme: light;
+  --gaia-surface: #fdf8f4;
+  --gaia-surface-soft: #f7f1eb;
+  --gaia-border: #e8e1dc;
+  --gaia-foreground: #2b103d;
+  --gaia-muted: #6b5a6f;
+  --gaia-text-strong: #1f0f35;
+  --gaia-text-default: #3b264e;
+  --gaia-text-muted: #7a6b80;
+  --gaia-contrast-bg: #2b103d;
+  --gaia-contrast-text: #fdf8f4;
+  --gaia-overlay: color-mix(in srgb, #2b103d 20%, transparent 80%);
+  --gaia-accent: #5f2c8a;
+  --gaia-glass: color-mix(in srgb, #ffffff 70%, transparent);
+  --gaia-glass-strong: color-mix(in srgb, #ffffff 85%, transparent);
+  --gaia-ink-soft: color-mix(in srgb, var(--gaia-foreground) 12%, var(--gaia-surface) 88%);
+  --gaia-ink-faint: color-mix(in srgb, var(--gaia-foreground) 7%, var(--gaia-surface) 93%);
+  --gaia-positive: #22c55e;
+  --gaia-negative: #ef4444;
+  --gaia-warning: #f59e0b;
+  --gaia-info: #38bdf8;
+}

@@ -14,15 +14,11 @@ const ALLOWED_TARGETS = [
   "payroll",
 ];
 
-type RouteParams = {
-  params: {
-    target: string;
-  };
-};
+type RouteParams = { params: Promise<{ target: string }> };
 
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export async function POST(req: NextRequest, context: RouteParams) {
   try {
-    const target = params.target;
+    const { target } = await context.params;
 
     if (!ALLOWED_TARGETS.includes(target)) {
       return NextResponse.json(

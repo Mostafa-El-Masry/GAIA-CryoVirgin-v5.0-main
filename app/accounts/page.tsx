@@ -37,6 +37,40 @@ type ImportResult = {
 
 type ImportError = string | null;
 
+type WiringReport = {
+  ok: boolean;
+  message?: string;
+  error?: string;
+  tables?: Record<
+    string,
+    {
+      exists: boolean;
+      missingColumns: string[];
+    }
+  >;
+};
+
+type ModuleTabKey =
+  | "callCenter"
+  | "dataLoaders"
+  | "brs"
+  | "salesAssets"
+  | "commissions";
+
+type ModuleTab = {
+  key: ModuleTabKey;
+  label: string;
+  status: "active" | "comingSoon";
+};
+
+const MODULE_TABS: ModuleTab[] = [
+  { key: "callCenter", label: "Call Center", status: "active" },
+  { key: "dataLoaders", label: "Data Loaders", status: "active" },
+  { key: "brs", label: "BRS", status: "comingSoon" },
+  { key: "salesAssets", label: "Sales / Assets", status: "comingSoon" },
+  { key: "commissions", label: "Commissions", status: "comingSoon" },
+];
+
 /**
  * Helper to read a File as UTF-8 text.
  */
@@ -286,6 +320,11 @@ type ImportTargetConfig = {
   accepted?: string;
 };
 
+type ImportTemplate = {
+  filename: string;
+  rows: string[][];
+};
+
 const IMPORT_TARGETS: ImportTargetConfig[] = [
   {
     key: "branches",
@@ -333,6 +372,65 @@ const IMPORT_TARGETS: ImportTargetConfig[] = [
   },
 ];
 
+const IMPORT_TEMPLATES: Partial<Record<ImportTargetKey, ImportTemplate>> = {
+  products: {
+    filename: "products-template.csv",
+    rows: [
+      ["Product Id", "Product Code", "Product Name", "Group", "Sales Rate", "Purchase Rate", "Cost", "Min. Stock", "Image Available"],
+      ["108881", "CP-0001", "FIBRE CLINIX TAME SHAMPOO 300ML", "SHAMPOOS", "0", "4.83", "4.83", "1", "No"],
+    ],
+  },
+  staff: {
+    filename: "staff-template.csv",
+    rows: [
+      ["Staff Id", "Staff Name", "Department", "Designation", "Active Status", "Appointment Status", "Sequence"],
+      ["200", "MABEL AUSTRIA IGLESIAS", "Reception", "Reception", "True", "False", "2"],
+    ],
+  },
+  customers: {
+    filename: "customers-template.csv",
+    rows: [
+      ["Customer Id", "Customer Name", "Phone", "Email", "Branch", "Active"],
+      ["CUST-001", "Jane Doe", "+96550000000", "jane@example.com", "Main Branch", "True"],
+    ],
+  },
+  branches: {
+    filename: "branches-template.csv",
+    rows: [
+      ["Branch Code", "Branch Name", "Area", "Is Active"],
+      ["BR-01", "Main Branch", "City Center", "True"],
+    ],
+  },
+  services: {
+    filename: "services-template.csv",
+    rows: [
+      ["Service Code", "Service Name", "Category", "Default Price", "Is Active"],
+      ["SV-001", "Haircut", "Hair", "10.00", "True"],
+    ],
+  },
+  sales: {
+    filename: "sales-template.csv",
+    rows: [
+      ["Invoice Id", "Invoice Date", "Customer Name", "Branch", "Net Amount", "Payment Method"],
+      ["INV-1001", "2025-01-10", "Jane Doe", "Main Branch", "120.50", "VISA"],
+    ],
+  },
+  payments: {
+    filename: "payments-template.csv",
+    rows: [
+      ["Payment Id", "Payment Date", "Channel", "Amount", "Reference"],
+      ["PM-1001", "2025-01-10", "KNET", "50.00", "KNET-REF-123"],
+    ],
+  },
+  payroll: {
+    filename: "payroll-template.csv",
+    rows: [
+      ["Period", "Staff Id", "Net Pay", "Overtime Hours", "Notes"],
+      ["2025-01", "200", "750.00", "5", "Jan payroll"],
+    ],
+  },
+};
+
 function ImportCard({
   companyId,
   target,
@@ -344,6 +442,21 @@ function ImportCard({
   const [isUploading, setIsUploading] = useState(false);
   const [result, setResult] = useState<ImportResult>(null);
   const [error, setError] = useState<ImportError>(null);
+  const template = IMPORT_TEMPLATES[target.key];
+
+  function handleDownloadTemplate() {
+    if (!template) return;
+    const csv = template.rows.map((row) => row.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = template.filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
 
   async function handleUpload() {
     try {
@@ -411,6 +524,16 @@ function ImportCard({
         <p className="mb-2 text-[11px] text-base-content/70">{target.hint}</p>
       )}
 
+      {template && (
+        <button
+          type="button"
+          onClick={handleDownloadTemplate}
+          className="mb-2 inline-flex items-center justify-center rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-[11px] font-medium text-primary shadow-sm transition hover:bg-primary/20"
+        >
+          Download template (.csv)
+        </button>
+      )}
+
       <input
         type="file"
         accept={
@@ -472,6 +595,12 @@ export default function AccountsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [savingNewCompany, setSavingNewCompany] = useState(false);
   const [newCompanyError, setNewCompanyError] = useState<string | null>(null);
+  const [wiringCheckRunning, setWiringCheckRunning] = useState(false);
+  const [wiringReport, setWiringReport] = useState<WiringReport | null>(null);
+  const [wiringError, setWiringError] = useState<string | null>(null);
+  const [showWiringCheckPanel, setShowWiringCheckPanel] = useState(false);
+  const [activeModuleTab, setActiveModuleTab] =
+    useState<ModuleTabKey>("callCenter");
 
   useEffect(() => {
     async function loadCompanies() {
@@ -529,6 +658,13 @@ export default function AccountsPage() {
     () => companies?.find((c) => c.id === selectedCompanyId) ?? null,
     [companies, selectedCompanyId]
   );
+  const wiringCheckPassed = wiringReport?.ok === true;
+
+  useEffect(() => {
+    if (wiringReport?.ok) {
+      setShowWiringCheckPanel(false);
+    }
+  }, [wiringReport]);
 
   function handleStartAddCompany() {
     setIsAdding(true);
@@ -586,6 +722,9 @@ export default function AccountsPage() {
         return [...base, created];
       });
       setSelectedCompanyId(created.id);
+      setShowWiringCheckPanel(true);
+      setWiringReport(null);
+      setWiringError(null);
       setIsAdding(false);
       setNewCompanyName("");
     } catch (err: any) {
@@ -596,6 +735,29 @@ export default function AccountsPage() {
       );
     } finally {
       setSavingNewCompany(false);
+    }
+  }
+
+  async function handleWiringCheck() {
+    try {
+      setWiringCheckRunning(true);
+      setWiringError(null);
+      setWiringReport(null);
+
+      const res = await fetch("/api/accounts/health");
+      const data = (await res.json()) as WiringReport;
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Wiring check failed.");
+      }
+
+      setWiringReport(data);
+    } catch (err: any) {
+      setWiringError(
+        err?.message ?? "Wiring check failed. Please try again later."
+      );
+    } finally {
+      setWiringCheckRunning(false);
     }
   }
 
@@ -627,7 +789,8 @@ export default function AccountsPage() {
             </p>
 
             {loading ? (
-              <div className="space-y-1">
+              <div className="space-y-2">
+                <p className="text-xs text-base-content/70">Loading companies…</p>
                 <div className="h-8 w-full animate-pulse rounded-xl bg-base-200" />
                 <div className="h-8 w-full animate-pulse rounded-xl bg-base-200" />
               </div>
@@ -708,48 +871,87 @@ export default function AccountsPage() {
             )}
           </div>
 
-          <div className="mt-5 rounded-xl border border-base-300 bg-base-100/80 p-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-base-content/70">
-              Wiring checklist (per new company)
-            </h2>
-            <ul className="mt-2 list-decimal space-y-1 pl-5 text-xs text-base-content/80">
-              <li>
-                GAIA creates a row in the{" "}
-                <code className="rounded bg-base-200 px-1 py-0.5 text-[10px]">
-                  companies
-                </code>{" "}
-                table (Supabase/Postgres) whenever you add a company.
-              </li>
-              <li>
-                All Accounts tables (sales, staff, branches, etc.) include a{" "}
-                <code className="rounded bg-base-200 px-1 py-0.5 text-[10px]">
-                  company_id
-                </code>{" "}
-                column (already in the core schema).
-              </li>
-              <li>
-                The new Import section logs every upload into{" "}
-                <code className="rounded bg-base-200 px-1 py-0.5 text-[10px]">
-                  import_jobs
-                </code>{" "}
-                with company + target.
-              </li>
-              <li>
-                In future weeks, each import job will be processed into the real
-                Accounts tables.
-              </li>
-            </ul>
-            <button
-              type="button"
-              className="mt-3 w-full rounded-lg border border-base-300 bg-base-200 px-2 py-1.5 text-xs font-medium text-base-content/80 hover:bg-base-300"
-            >
-              Run wiring check (placeholder)
-            </button>
-            <p className="mt-1 text-[11px] text-base-content/60">
-              For now this is UI only. Use it as a reminder of the steps needed
-              for each new company.
-            </p>
-          </div>
+          {showWiringCheckPanel && !wiringCheckPassed && (
+            <div className="mt-5 rounded-xl border border-base-300 bg-base-100/80 p-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-base-content/70">
+                Wiring checklist (per new company)
+              </h2>
+              <ul className="mt-2 list-decimal space-y-1 pl-5 text-xs text-base-content/80">
+                <li>
+                  GAIA creates a row in the{" "}
+                  <code className="rounded bg-base-200 px-1 py-0.5 text-[10px]">
+                    companies
+                  </code>{" "}
+                  table (Supabase/Postgres) whenever you add a company.
+                </li>
+                <li>
+                  All Accounts tables (sales, staff, branches, etc.) include a{" "}
+                  <code className="rounded bg-base-200 px-1 py-0.5 text-[10px]">
+                    company_id
+                  </code>{" "}
+                  column (already in the core schema).
+                </li>
+                <li>
+                  The new Import section logs every upload into{" "}
+                  <code className="rounded bg-base-200 px-1 py-0.5 text-[10px]">
+                    import_jobs
+                  </code>{" "}
+                  with company + target.
+                </li>
+                <li>
+                  In future weeks, each import job will be processed into the real
+                  Accounts tables.
+                </li>
+              </ul>
+              <button
+                type="button"
+                onClick={handleWiringCheck}
+                disabled={wiringCheckRunning}
+                className="mt-3 w-full rounded-lg border border-base-300 bg-base-200 px-2 py-1.5 text-xs font-medium text-base-content/80 hover:bg-base-300 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {wiringCheckRunning ? "Checking wiring..." : "Run wiring check"}
+              </button>
+              {wiringError && (
+                <p className="mt-2 text-[11px] text-error">{wiringError}</p>
+              )}
+              {wiringReport && (
+                <div className="mt-2 space-y-1 rounded-lg border border-base-200 bg-base-100 p-2 text-[11px] text-base-content/80">
+                  <p className={`font-semibold ${wiringReport.ok ? "text-success" : "text-warning"}`}>
+                    {wiringReport.message || (wiringReport.ok ? "Accounts wiring looks good." : "Check required.")}
+                  </p>
+                  {wiringReport.tables && (
+                    <ul className="space-y-1">
+                      {Object.entries(wiringReport.tables).map(([table, status]) => (
+                        <li key={table} className="flex items-start gap-2">
+                          <span
+                            className={`mt-0.5 inline-block h-2 w-2 rounded-full ${
+                              status.exists && status.missingColumns.length === 0
+                                ? "bg-success"
+                                : status.exists
+                                  ? "bg-warning"
+                                  : "bg-error"
+                            }`}
+                          />
+                          <span>
+                            <span className="font-semibold">{table}</span>
+                            {status.exists ? (
+                              status.missingColumns.length === 0 ? (
+                                " is present."
+                              ) : (
+                                <> missing columns: {status.missingColumns.join(", ")} </>
+                              )
+                            ) : (
+                              " table is missing."
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </aside>
 
         {/* Main content: modules for selected company */}
@@ -764,67 +966,92 @@ export default function AccountsPage() {
               BRS, Sales, Commissions, and more. For now, Call Center (Python)
               and Data Loaders are available; other modules are placeholders.
             </p>
-            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
-                Call Center · Active
-              </span>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
-                Data Loaders · Active
-              </span>
-              <span className="rounded-full bg-base-200 px-2 py-0.5 text-base-content/70">
-                BRS · Coming soon
-              </span>
-              <span className="rounded-full bg-base-200 px-2 py-0.5 text-base-content/70">
-                Sales / Assets · Coming soon
-              </span>
-              <span className="rounded-full bg-base-200 px-2 py-0.5 text-base-content/70">
-                Commissions · Coming soon
-              </span>
-            </div>
+            <nav className="mt-3 flex flex-wrap gap-2 text-xs">
+              {MODULE_TABS.map((tab) => {
+                const isActiveTab = activeModuleTab === tab.key;
+                const isDisabled = tab.status !== "active";
+
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    disabled={isDisabled}
+                    onClick={() => setActiveModuleTab(tab.key)}
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 transition ${
+                      isActiveTab
+                        ? "border-primary bg-primary text-primary-content"
+                        : "border-base-300 bg-base-200 text-base-content/80 hover:bg-base-300"
+                    } ${isDisabled ? "cursor-not-allowed opacity-60 hover:bg-base-200" : ""}`}
+                  >
+                    <span className="font-semibold">{tab.label}</span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                        isActiveTab
+                          ? "bg-primary/20 text-primary-content"
+                          : "bg-base-100 text-base-content/80"
+                      }`}
+                    >
+                      {tab.status === "active" ? "Active" : "Coming soon"}
+                    </span>
+                  </button>
+                );
+              })}
+            </nav>
           </header>
 
           {selectedCompany ? (
             <>
-              <CallCenterPythonPanel
-                companyName={selectedCompany.name}
-                companyId={selectedCompany.id}
-              />
+              {activeModuleTab === "callCenter" && (
+                <CallCenterPythonPanel
+                  companyName={selectedCompany.name}
+                  companyId={selectedCompany.id}
+                />
+              )}
 
-              <section className="rounded-2xl border border-base-300 bg-base-100/80 p-4 sm:p-6">
-                <header className="mb-4 space-y-1">
-                  <h2 className="text-base font-semibold tracking-tight">
-                    Data loaders · Imports
-                  </h2>
-                  <p className="text-xs text-base-content/70">
-                    Load your existing Excel / CSV reports once, and GAIA will
-                    remember them for this company in the online database. Each
-                    tile below creates an{" "}
-                    <code className="rounded bg-base-200 px-1 py-0.5 text-[10px]">
-                      import_jobs
-                    </code>{" "}
-                    entry for the selected company.
-                  </p>
-                  <p className="text-[11px] text-base-content/60">
-                    Today: logging only. Later weeks: each loader will parse the
-                    file and push real rows into{" "}
-                    <span className="font-medium">
-                      branches, staff, customers, services, products, sales,
-                      payments
-                    </span>{" "}
-                    and payroll.
-                  </p>
-                </header>
+              {activeModuleTab === "dataLoaders" && (
+                <section className="rounded-2xl border border-base-300 bg-base-100/80 p-4 sm:p-6">
+                  <header className="mb-4 space-y-1">
+                    <h2 className="text-base font-semibold tracking-tight">
+                      Data loaders A? Imports
+                    </h2>
+                    <p className="text-xs text-base-content/70">
+                      Load your existing Excel / CSV reports once, and GAIA will
+                      remember them for this company in the online database.
+                      Each tile below creates an {" "}
+                      <code className="rounded bg-base-200 px-1 py-0.5 text-[10px]">
+                        import_jobs
+                      </code>{" "}
+                      entry for the selected company.
+                    </p>
+                    <p className="text-[11px] text-base-content/60">
+                      Today: logging only. Later weeks: each loader will parse
+                      the file and push real rows into{" "}
+                      <span className="font-medium">
+                        branches, staff, customers, services, products, sales,
+                        payments
+                      </span>{" "}
+                      and payroll.
+                    </p>
+                  </header>
 
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {IMPORT_TARGETS.map((cfg) => (
-                    <ImportCard
-                      key={cfg.key}
-                      companyId={selectedCompany.id}
-                      target={cfg}
-                    />
-                  ))}
-                </div>
-              </section>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {IMPORT_TARGETS.map((cfg) => (
+                      <ImportCard
+                        key={cfg.key}
+                        companyId={selectedCompany.id}
+                        target={cfg}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {activeModuleTab !== "callCenter" &&
+                activeModuleTab !== "dataLoaders" && (
+                  <section className="rounded-2xl border border-dashed border-base-300 bg-base-100/60 p-4 text-sm text-base-content/80">
+                    <p>Module coming soon.</p>
+                  </section>
+                )}
             </>
           ) : (
             <section className="rounded-2xl border border-dashed border-base-300 bg-base-100/60 p-4 text-sm text-base-content/80">

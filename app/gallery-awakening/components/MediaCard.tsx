@@ -1,34 +1,49 @@
-'use client';
+"use client";
 
-import React, { useRef, useState } from 'react';
-import type { MediaItem, VideoThumbnail } from '../mediaTypes';
-import { getR2PreviewUrl, getR2Url } from '../r2';
-import { formatMediaTitle } from '../formatMediaTitle';
+import React, { useRef, useState } from "react";
+import type { MediaItem, VideoThumbnail } from "../mediaTypes";
+import { getR2PreviewUrl, getR2Url } from "../r2";
+import { formatMediaTitle } from "../formatMediaTitle";
 import {
   formatViewDuration,
   onViewStoreChange,
   recordViewDuration,
-} from '../viewTracker';
-import type { ViewEntry } from '../viewTracker';
+} from "../viewTracker";
+import type { ViewEntry } from "../viewTracker";
 
 interface MediaCardProps {
   item: MediaItem;
   onPreview?: (item: MediaItem) => void;
+  allowDelete?: boolean;
+  onDelete?: () => void;
+  onRename?: (nextTitle: string) => void;
 }
 
 const normalizeLocalPath = (p?: string) => {
-  if (!p) return '';
-  return p.startsWith('http') ? p : `/${p.replace(/^\/+/, '')}`;
+  if (!p) return "";
+  return p.startsWith("http") ? p : `/${p.replace(/^\/+/, "")}`;
 };
 
-export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
+export const MediaCard: React.FC<MediaCardProps> = ({
+  item,
+  onPreview,
+  allowDelete = false,
+  onDelete,
+  onRename,
+}) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [imageBroken, setImageBroken] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [posterLoaded, setPosterLoaded] = useState(false);
   const [playStart, setPlayStart] = useState<number | null>(null);
   const [viewEntry, setViewEntry] = useState<ViewEntry | null>(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(
+    (item.title || "").replace(/\.[^.]+$/, "")
+  );
+  const viewTimeLabel = formatViewDuration(viewEntry);
   const displayTitle = formatMediaTitle(item.title);
 
   const baseVideoSrc = React.useMemo(() => {
@@ -38,34 +53,35 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
     if (item.r2Path) {
       return getR2Url(item.r2Path);
     }
-    return '';
+    return "";
   }, [item.localPath, item.r2Path]);
 
-  const videoSrc = shouldLoadVideo ? baseVideoSrc : '';
+  const videoSrc = shouldLoadVideo ? baseVideoSrc : "";
 
   const previewSrcForThumb = (thumb?: VideoThumbnail) => {
-    if (!thumb) return '';
+    if (!thumb) return "";
     if (thumb.localPath) return normalizeLocalPath(thumb.localPath);
     if (thumb.r2Key) return getR2PreviewUrl(thumb.r2Key);
-    return '';
+    return "";
   };
 
   const primaryImageSrc = React.useMemo(() => {
-    if (item.type === 'video') {
+    if (item.type === "video") {
       const thumb = item.thumbnails?.[0];
       const thumbSrc = previewSrcForThumb(thumb);
       if (thumbSrc) return thumbSrc;
-      return '/placeholder-gallery-image.png';
+      return "";
     }
     if (item.r2Path) return getR2Url(item.r2Path);
     if (item.localPath) return normalizeLocalPath(item.localPath);
-    return '/placeholder-gallery-image.png';
+    return "/placeholder-gallery-image.png";
   }, [item.localPath, item.r2Path, item.thumbnails, item.type]);
 
   const primaryPreviewSrc = React.useMemo(
     () => previewSrcForThumb(item.thumbnails?.[0]),
     [item.thumbnails]
   );
+  const previewPoster = primaryPreviewSrc || (primaryImageSrc || undefined);
 
   React.useEffect(() => {
     // Reset player state when switching media items.
@@ -73,6 +89,8 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
     setIsVideoLoading(false);
     setVideoError(false);
     setPlayStart(null);
+    setIsRenaming(false);
+    setDraftTitle((item.title || "").replace(/\.[^.]+$/, ""));
   }, [item.id]);
 
   React.useEffect(() => {
@@ -84,7 +102,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
   // Track video watch time in seconds (rounded down to the floor as required).
   React.useEffect(() => {
     const video = videoRef.current;
-    if (!video || item.type !== 'video' || !shouldLoadVideo) return;
+    if (!video || item.type !== "video" || !shouldLoadVideo) return;
 
     const handlePlay = () => setPlayStart(Date.now());
     const handlePauseOrEnd = () => {
@@ -95,14 +113,14 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
       }
     };
 
-    video.addEventListener('play', handlePlay);
-    video.addEventListener('pause', handlePauseOrEnd);
-    video.addEventListener('ended', handlePauseOrEnd);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePauseOrEnd);
+    video.addEventListener("ended", handlePauseOrEnd);
 
     return () => {
-      video.removeEventListener('play', handlePlay);
-      video.removeEventListener('pause', handlePauseOrEnd);
-      video.removeEventListener('ended', handlePauseOrEnd);
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePauseOrEnd);
+      video.removeEventListener("ended", handlePauseOrEnd);
       // flush any active session on unmount
       if (playStart) {
         const elapsed = (Date.now() - playStart) / 1000;
@@ -126,20 +144,94 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
     video.currentTime = Math.max(0, Math.min(duration, next));
   };
 
+  const handleSubmitRename = () => {
+    if (!onRename) return setIsRenaming(false);
+    const trimmed = draftTitle.replace(/\.[^.]+$/, "").trim();
+    const next = trimmed || "Untitled";
+    onRename(next);
+    setIsRenaming(false);
+  };
+
+  const renderRenameOverlay = () => {
+    if (!isRenaming) return null;
+    return (
+      <div className="absolute inset-0 z-20 flex items-center justify-center bg-base-100/90 p-4 backdrop-blur">
+        <div className="w-full max-w-sm space-y-2 rounded-xl border border-base-300 bg-base-100 p-3 shadow-lg">
+          <p className="text-xs font-semibold text-base-content/80">
+            Rename media
+          </p>
+          <input
+            value={draftTitle}
+            onChange={(e) => setDraftTitle(e.target.value)}
+            className="w-full rounded-lg border border-base-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/40"
+            placeholder="New title"
+          />
+          <div className="flex gap-2 text-xs">
+            <button
+              type="button"
+              onClick={handleSubmitRename}
+              className="flex-1 rounded-lg bg-primary px-3 py-1.5 font-semibold text-primary-content hover:bg-primary-focus"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsRenaming(false)}
+              className="flex-1 rounded-lg bg-base-200 px-3 py-1.5 font-semibold text-base-content hover:bg-base-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderImage = () => {
-    const src = imageBroken ? '/placeholder-gallery-image.png' : primaryImageSrc;
+    const src = imageBroken
+      ? "/placeholder-gallery-image.png"
+      : primaryImageSrc;
 
     return (
-      <div className="relative w-full overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm aspect-[4/3]">
+      <div className="group relative w-full overflow-hidden rounded-xl bg-base-100 shadow-lg">
         <img
           src={src}
           alt={displayTitle}
-          className="h-full w-full cursor-pointer object-cover transition hover:scale-[1.01] hover:opacity-90"
+          className="relative z-0 block h-auto w-full cursor-pointer object-contain transition duration-200 hover:scale-[1.01] hover:opacity-95"
           loading="lazy"
           onClick={() => onPreview?.(item)}
           onError={() => setImageBroken(true)}
         />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/10 to-transparent opacity-0 transition duration-200 group-hover:opacity-100" />
+
+        {onRename && (
+          <button
+            type="button"
+            onClick={() => setIsRenaming(true)}
+            className="absolute right-3 top-3 z-20 rounded-full bg-black/60 px-3 py-1 text-[10px] font-semibold text-white shadow opacity-0 transition duration-200 group-hover:opacity-100 hover:bg-primary hover:text-primary-content"
+          >
+            Rename
+          </button>
+        )}
+
+        <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between gap-2 bg-gradient-to-t from-black/55 to-transparent px-3 py-2 text-[11px] text-white opacity-0 transition duration-200 group-hover:opacity-100">
+          <span className="truncate font-semibold drop-shadow"></span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white shadow">
+            ⏱ {viewTimeLabel || "Not watched yet"}
+          </span>
+        </div>
+
+        {allowDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="absolute left-3 top-3 z-20 rounded-full bg-black/60 px-3 py-1 text-[10px] font-semibold text-white shadow opacity-0 transition duration-200 group-hover:opacity-100 hover:bg-error hover:text-error-content"
+          >
+            Delete
+          </button>
+        )}
         {renderDetailsOverlay()}
+        {renderRenameOverlay()}
       </div>
     );
   };
@@ -151,19 +243,24 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
           <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-base-200 text-[10px] font-semibold text-base-content/70">
             +
           </span>
-          <span>No preview thumbnails yet. Mark this video to generate more thumbs later.</span>
+          <span>
+            No preview thumbnails yet. Mark this video to generate more thumbs
+            later.
+          </span>
         </div>
       );
     }
 
     return (
       <div className="flex items-center gap-2 overflow-x-auto rounded-xl border border-base-300/80 bg-base-100/90 p-2">
-        {item.thumbnails.map((thumb) => {
-          const thumbSrc = previewSrcForThumb(thumb) || '/placeholder-gallery-image.png';
+        {item.thumbnails.map((thumb, idx) => {
+          const thumbSrc =
+            previewSrcForThumb(thumb) || "/placeholder-gallery-image.png";
           return (
             <div
               key={thumb.index}
-              className="relative h-16 w-20 flex-none overflow-hidden rounded-lg bg-base-200 shadow-sm"
+              className="relative h-16 w-20 flex-none overflow-hidden rounded-lg bg-base-200 shadow-sm opacity-0 translate-y-1 animate-[fadeIn_250ms_ease-out_forwards]"
+              style={{ animationDelay: `${idx * 90}ms` }}
             >
               <img
                 src={thumbSrc}
@@ -171,11 +268,11 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
                 className="h-full w-full object-cover"
                 loading="lazy"
                 onError={(e) => {
-                  e.currentTarget.src = '/placeholder-gallery-image.png';
+                  e.currentTarget.src = "/placeholder-gallery-image.png";
                 }}
               />
               <div className="absolute left-1 top-1 rounded-full bg-base-100/85 px-2 py-0.5 text-[10px] font-semibold text-base-content shadow">
-                #{String(thumb.index).padStart(2, '0')}
+                #{String(thumb.index).padStart(2, "0")}
               </div>
             </div>
           );
@@ -196,7 +293,8 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
     if (videoError) {
       return (
         <div className="flex min-h-[160px] w-full items-center justify-center rounded-xl border border-dashed border-base-300 text-[11px] text-base-content/60">
-          GAIA could not load this video. Make sure the file exists and the path is correct.
+          GAIA could not load this video. Make sure the file exists and the path
+          is correct.
         </div>
       );
     }
@@ -210,18 +308,33 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
             setIsVideoLoading(true);
             setShouldLoadVideo(true);
           }}
-          className="group relative block w-full overflow-hidden rounded-xl"
+          className="group relative block w-full overflow-hidden rounded-xl aspect-video"
         >
-          <div className="relative w-full overflow-hidden rounded-xl bg-base-200">
-            {primaryPreviewSrc ? (
-              <img
-                src={primaryPreviewSrc}
-                alt={`${displayTitle} preview`}
-                className="h-auto w-full object-cover transition duration-300 group-hover:scale-[1.02]"
-                loading="lazy"
-                onError={(e) => {
-                  e.currentTarget.src = '/placeholder-gallery-image.png';
-                }}
+          <div className="relative h-full w-full overflow-hidden rounded-xl bg-base-200">
+            {previewPoster ? (
+              <>
+                <img
+                  src={previewPoster}
+                  alt={`${displayTitle} preview`}
+                  className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                  loading="lazy"
+                  onLoad={() => setPosterLoaded(true)}
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder-gallery-image.png";
+                  }}
+                />
+                {!posterLoaded && (
+                  <div className="absolute inset-0 animate-pulse rounded-xl bg-base-300/70" />
+                )}
+              </>
+            ) : baseVideoSrc ? (
+              <video
+                src={baseVideoSrc}
+                className="h-full w-full object-cover"
+                preload="metadata"
+                muted
+                playsInline
+                controls={false}
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-[11px] text-base-content/60">
@@ -230,30 +343,20 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
             )}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
           </div>
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
-            <span className="rounded-full bg-base-100/90 px-4 py-2 text-[12px] font-semibold text-base-content shadow-lg">
-              Tap to play (no metadata preloaded)
-            </span>
-            {primaryPreviewSrc ? (
-              <span className="rounded-full bg-base-100/80 px-3 py-1 text-[10px] text-base-content/70 shadow">
-                Using R2 preview frames
-              </span>
-            ) : null}
-          </div>
         </button>
       );
     }
 
     return (
-      <div className="relative w-full overflow-hidden rounded-xl bg-black">
+      <div className="group relative w-full overflow-hidden rounded-xl bg-black aspect-video">
         <video
           ref={videoRef}
           src={videoSrc}
-          className="h-auto w-full object-cover"
+          className="h-full w-full object-contain bg-black"
           controls
           playsInline
           preload="none"
-          poster={primaryPreviewSrc || undefined}
+          poster={previewPoster || undefined}
           onError={() => {
             setVideoError(true);
             setIsVideoLoading(false);
@@ -265,49 +368,44 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
             Loading video…
           </div>
         )}
+        {allowDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="absolute left-3 top-3 z-10 rounded-full bg-black/60 px-3 py-1 text-[10px] font-semibold text-white shadow opacity-0 transition duration-200 group-hover:opacity-100 hover:bg-error hover:text-error-content"
+          >
+            Delete
+          </button>
+        )}
+        {onRename && (
+          <button
+            type="button"
+            onClick={() => setIsRenaming(true)}
+            className="absolute right-3 top-3 z-10 rounded-full bg-black/60 px-3 py-1 text-[10px] font-semibold text-white shadow opacity-0 transition duration-200 group-hover:opacity-100 hover:bg-primary hover:text-primary-content"
+          >
+            Rename
+          </button>
+        )}
+        {renderRenameOverlay()}
       </div>
     );
   };
 
   const renderDetailsOverlay = () => {
-    const hasWatchHistory = Boolean(viewEntry && viewEntry.value > 0);
-    const viewTimeLabel = formatViewDuration(viewEntry);
-
     return (
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-base-200/80 via-base-200/20 to-transparent opacity-0 transition-all duration-500 ease-out group-hover:opacity-100" />
-
-        <div className="absolute right-3 top-3 -translate-y-2 opacity-0 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:opacity-100">
-          <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-base-100/95 px-3 py-1 text-[10px] font-semibold text-base-content shadow-lg backdrop-blur">
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${
-                hasWatchHistory ? 'bg-emerald-500' : 'bg-base-300'
-              }`}
-            />
-            <span className="uppercase tracking-wide text-[9px] text-base-content/70">
-              View time
-            </span>
-            <span>{viewTimeLabel}</span>
-          </div>
-        </div>
-
-        <div className="pointer-events-none absolute inset-0 flex flex-col justify-end translate-y-2 p-3 opacity-0 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:opacity-100">
-          <div className="flex justify-end">
-            <div className="pointer-events-auto rounded-full bg-base-100/90 px-2 py-1 text-base font-semibold text-base-content shadow">
-              i
-            </div>
-          </div>
-          <div className="pointer-events-auto mt-2 max-w-full space-y-1 rounded-xl bg-base-100/95 p-3 text-[11px] text-base-content shadow-lg backdrop-blur">
+        <div className="pointer-events-none absolute inset-0 flex flex-col justify-end translate-y-2 p-3 opacity-0 transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100">
+          <div className="pointer-events-auto mt-2 max-w-full space-y-1 p-1 text-[11px] text-white drop-shadow">
             <p className="font-semibold">{displayTitle}</p>
             {item.description &&
-              item.description !== 'Gallery image' &&
-              item.description !== 'Local video asset' &&
-              item.description !== 'Cloudflare R2 video asset' && (
-              <p className="text-base-content/70">{item.description}</p>
-            )}
+              item.description !== "Gallery image" &&
+              item.description !== "Local video asset" &&
+              item.description !== "Cloudflare R2 video asset" && (
+                <p className="text-white/80">{item.description}</p>
+              )}
             {item.tags?.length ? (
-              <p className="text-[10px] text-base-content/60">
-                Tags: {item.tags.join(', ')}
+              <p className="text-[10px] text-white/70">
+                Tags: {item.tags.join(", ")}
               </p>
             ) : null}
           </div>
@@ -316,20 +414,19 @@ export const MediaCard: React.FC<MediaCardProps> = ({ item, onPreview }) => {
     );
   };
 
-
   return (
     <div
-      className="group relative flex h-full flex-col gap-2 overflow-hidden rounded-2xl border border-base-300 bg-base-100/90 p-2 shadow-sm transition duration-200"
+      className="group relative flex h-full flex-col gap-2 overflow-hidden rounded-2xl bg-base-100/90 p-2 shadow-sm transition duration-200"
       aria-label={displayTitle}
     >
-      {item.type === 'image' ? (
-        <div className="relative overflow-hidden rounded-xl border border-base-300">
+      {item.type === "image" ? (
+        <div className="relative overflow-hidden rounded-xl">
           {/* Still simple <img>; later we can switch to Next/Image. */}
           {renderImage()}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <div className="relative overflow-hidden rounded-xl border border-base-300 bg-base-200">
+          <div className="relative overflow-hidden rounded-xl bg-base-200">
             <div className="relative">
               {renderVideoBody()}
               {shouldLoadVideo && !videoError && baseVideoSrc && (

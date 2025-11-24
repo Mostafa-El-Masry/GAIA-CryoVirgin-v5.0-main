@@ -8,11 +8,13 @@ import { MediaGrid } from './components/MediaGrid';
 import { FeatureHero } from './components/FeatureHero';
 import { SyncCenter } from './components/SyncCenter';
 import { useGalleryData } from './useGalleryData';
-import { FilterBar, SortMode } from './components/FilterBar';
+import { FilterBar } from './components/FilterBar';
 import { MemoryPulse } from './components/MemoryPulse';
 import { VersionLog } from './components/VersionLog';
 import { getAutoBoxResult } from './featureLogic';
 import { hasR2PublicBase } from './r2';
+import { useCurrentPermissions, isCreatorAdmin } from '@/lib/permissions';
+import { useAuthSnapshot } from '@/lib/auth-client';
 
 type DataSource = 'none' | 'cache' | 'r2';
 
@@ -29,28 +31,6 @@ function applyTagFilter(items: MediaItem[], activeTags: string[]): MediaItem[] {
   });
 }
 
-function sortItems(items: MediaItem[], mode: SortMode): MediaItem[] {
-  const copy = [...items];
-  if (mode === 'most_viewed') {
-    copy.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
-  } else if (mode === 'most_loved') {
-    copy.sort((a, b) => {
-      const aFav = a.isFavorite ? 1 : 0;
-      const bFav = b.isFavorite ? 1 : 0;
-      if (bFav !== aFav) return bFav - aFav;
-      return (b.viewCount || 0) - (a.viewCount || 0);
-    });
-  } else {
-    // recent
-    copy.sort((a, b) => {
-      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return bDate - aDate;
-    });
-  }
-  return copy;
-}
-
 function sourceLabelFrom(source: DataSource): string {
   switch (source) {
     case 'r2':
@@ -63,22 +43,12 @@ function sourceLabelFrom(source: DataSource): string {
   }
 }
 
-function formatLastUpdated(lastUpdated: string | null): string | null {
-  if (!lastUpdated) return null;
-  try {
-    const d = new Date(lastUpdated);
-    if (Number.isNaN(d.getTime())) return lastUpdated;
-    return d.toLocaleString();
-  } catch {
-    return lastUpdated;
-  }
-}
-
 const GalleryAwakeningPage: React.FC = () => {
-  const { items, isLoading, source, lastUpdated } = useGalleryData(mockMediaItems);
+  const { items, isLoading, source } = useGalleryData(mockMediaItems);
+  const { profile, status } = useAuthSnapshot();
+  const permissions = useCurrentPermissions();
 
   const [localNewItems, setLocalNewItems] = useState<MediaItem[]>([]);
-  const [sortMode, setSortMode] = useState<SortMode>('recent');
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('image');
   const [page, setPage] = useState<number>(1);
@@ -86,21 +56,63 @@ const GalleryAwakeningPage: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [titleOverrides, setTitleOverrides] = useState<Record<string, string>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const raw = window.localStorage.getItem('gaia_gallery_titles');
+      return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = window.localStorage.getItem('gaia_gallery_hidden');
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const mergedItems = useMemo(() => {
     const merged = new Map<string, MediaItem>();
     [...localNewItems, ...items].forEach((item) => merged.set(item.id, item));
-    return Array.from(merged.values());
-  }, [items, localNewItems]);
+    const withTitles = Array.from(merged.values()).map((item) =>
+      titleOverrides[item.id]
+        ? {
+            ...item,
+            title: titleOverrides[item.id],
+            // strip extensions from synthetic title overrides for display
+            slug: item.slug,
+          }
+        : item
+    );
+    const withThumbs = withTitles.map((item) => {
+      if (item.type !== 'video') return item;
+      const hasThumbs = Array.isArray(item.thumbnails) && item.thumbnails.length > 0;
+      if (hasThumbs) return item;
+      // synthesize six preview frames based on title when real thumbs are missing
+      const safeTitle = (item.title || 'Video').replace(/\.[^.]+$/, '').trim();
+      const thumbs = Array.from({ length: 6 }).map((_, idx) => ({
+        index: idx + 1,
+        r2Key: `${safeTitle}_thumb_00${idx + 1}.jpg`,
+      }));
+      return { ...item, thumbnails: thumbs };
+    });
+    return withThumbs;
+  }, [items, localNewItems, titleOverrides]);
 
   // Hide items that cannot render because there is no public R2 base URL
   const allItems = useMemo(() => {
     const allowR2 = hasR2PublicBase();
-    return mergedItems.filter((item) => {
+    const visible = mergedItems.filter((item) => {
       if (item.r2Path && !allowR2) return false;
       return true;
     });
-  }, [mergedItems]);
+    if (!hiddenIds.length) return visible;
+    return visible.filter((item) => !hiddenIds.includes(item.id));
+  }, [mergedItems, hiddenIds]);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -115,8 +127,8 @@ const GalleryAwakeningPage: React.FC = () => {
   }, [allItems]);
 
   const sorted = useMemo(
-    () => sortItems(allItems, sortMode),
-    [allItems, sortMode]
+    () => allItems,
+    [allItems]
   );
 
   const filteredByTags = useMemo(
@@ -145,18 +157,12 @@ const GalleryAwakeningPage: React.FC = () => {
   const videosCount = videos.length;
 
   const computedSourceLabel = sourceLabelFrom(source as DataSource);
-  const computedLastUpdated = formatLastUpdated(lastUpdated);
 
   const handleToggleTag = (tag: string) => {
     setPage(1);
     setActiveTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
-  };
-
-  const handleChangeSort = (mode: SortMode) => {
-    setPage(1);
-    setSortMode(mode);
   };
 
   const handleChangeViewMode = (mode: ViewMode) => {
@@ -169,10 +175,41 @@ const GalleryAwakeningPage: React.FC = () => {
   };
 
   const currentCollectionLabel = viewMode === 'image' ? 'Images' : 'Videos';
+  const userEmail = profile?.email ?? status?.email ?? null;
+  const allowDelete =
+    isCreatorAdmin(userEmail) || Boolean((permissions as any).galleryDelete);
+
+  const handleDeleteItem = (id: string) => {
+    setHiddenIds((prev) => {
+      const next = Array.from(new Set([...prev, id]));
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('gaia_gallery_hidden', JSON.stringify(next));
+        }
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   const handleClickUpload = () => {
     setUploadError(null);
     fileInputRef.current?.click();
+  };
+
+  const handleRenameItem = (id: string, nextTitle: string) => {
+    setTitleOverrides((prev) => {
+      const next = { ...prev, [id]: nextTitle };
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('gaia_gallery_titles', JSON.stringify(next));
+        }
+      } catch {
+        // ignore
+      }
+      return next;
+    });
   };
 
   const handleFilesSelected = async (files: FileList | null) => {
@@ -334,12 +371,6 @@ const GalleryAwakeningPage: React.FC = () => {
                   {computedSourceLabel}
                 </span>
               </p>
-              {computedLastUpdated && (
-                <p>
-                  <span className="text-base-content/60">Last updated: </span>
-                  <span>{computedLastUpdated}</span>
-                </p>
-              )}
               <p className="text-[10px] text-base-content/60">
                 Later this drawer can be creator/admin only with permissions.
               </p>
@@ -379,11 +410,6 @@ const GalleryAwakeningPage: React.FC = () => {
                 availableTags={allTags}
                 activeTags={activeTags}
                 onToggleTag={handleToggleTag}
-                sortMode={sortMode}
-                onChangeSort={handleChangeSort}
-                sourceLabel={computedSourceLabel}
-                lastUpdated={computedLastUpdated}
-                isLoading={isLoading}
               />
               <div className="flex flex-col items-end gap-2">
                 <div className="flex items-center justify-end gap-2 rounded-2xl border border-base-300 bg-base-200 px-2 py-1 text-[11px] text-base-content">
@@ -454,20 +480,6 @@ const GalleryAwakeningPage: React.FC = () => {
 
           {/* BigShot grid */}
           <section className="space-y-3 pt-2">
-            <header className="flex items-center justify-between gap-2">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-base-content/60">
-                  {currentCollectionLabel}
-                </p>
-                <h1 className="text-lg font-semibold text-base-content">
-                  {viewMode === 'image' ? 'All images' : 'All videos'}
-                </h1>
-                <p className="text-[11px] text-base-content/70">
-                  Full-width collection view. Only one type is visible at a time so your eye can rest.
-                </p>
-              </div>
-            </header>
-
             <MediaGrid
               title={currentCollectionLabel}
               items={visibleItems}
@@ -475,6 +487,9 @@ const GalleryAwakeningPage: React.FC = () => {
               page={page}
               perPage={PAGE_SIZE}
               onPageChange={setPage}
+              allowDelete={allowDelete}
+              onDeleteItem={handleDeleteItem}
+              onRenameItem={handleRenameItem}
             />
           </section>
         </div>

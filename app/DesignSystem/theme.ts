@@ -15,6 +15,7 @@ export const THEMES = [
   "coffee",
   "emerald",
   "cupcake",
+  "daisysoft",
   "pastel",
   "nord",
   "silk",

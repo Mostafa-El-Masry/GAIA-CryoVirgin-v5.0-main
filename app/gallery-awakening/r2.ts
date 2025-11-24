@@ -31,6 +31,7 @@ export function hasR2PreviewBase(): boolean {
 
 function buildR2Url(key: string, customBase?: string): string {
   if (!key) return '/placeholder-gallery-image.png';
+  if (key.startsWith('http://') || key.startsWith('https://')) return key;
 
   const effectiveBase = customBase || base;
   if (effectiveBase && typeof effectiveBase === 'string') {

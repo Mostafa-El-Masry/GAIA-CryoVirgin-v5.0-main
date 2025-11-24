@@ -133,8 +133,13 @@ export async function POST(req: NextRequest) {
     );
 
     const zipContent = await zip.generateAsync({ type: "nodebuffer" });
+    const zipArray = new Uint8Array(
+      zipContent.buffer,
+      zipContent.byteOffset,
+      zipContent.byteLength
+    );
 
-    return new NextResponse(zipContent, {
+    return new NextResponse(zipArray as any, {
       status: 200,
       headers: {
         "Content-Type": "application/zip",
