@@ -43,6 +43,8 @@ export const MediaCard: React.FC<MediaCardProps> = ({
   const [draftTitle, setDraftTitle] = useState(
     (item.title || "").replace(/\.[^.]+$/, "")
   );
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const cycleTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const viewTimeLabel = formatViewDuration(viewEntry);
   const displayTitle = formatMediaTitle(item.title);
 
@@ -65,6 +67,14 @@ export const MediaCard: React.FC<MediaCardProps> = ({
     return "";
   };
 
+  const previewSources = React.useMemo(
+    () =>
+      (item.thumbnails || [])
+        .map(previewSrcForThumb)
+        .filter((src) => Boolean(src)),
+    [item.thumbnails]
+  );
+
   const primaryImageSrc = React.useMemo(() => {
     if (item.type === "video") {
       const thumb = item.thumbnails?.[0];
@@ -81,17 +91,26 @@ export const MediaCard: React.FC<MediaCardProps> = ({
     () => previewSrcForThumb(item.thumbnails?.[0]),
     [item.thumbnails]
   );
-  const previewPoster = primaryPreviewSrc || (primaryImageSrc || undefined);
+  const previewPoster =
+    previewSources[previewIndex] ||
+    primaryPreviewSrc ||
+    (primaryImageSrc || undefined);
 
   React.useEffect(() => {
     // Reset player state when switching media items.
     setShouldLoadVideo(false);
     setIsVideoLoading(false);
     setVideoError(false);
-    setPlayStart(null);
-    setIsRenaming(false);
-    setDraftTitle((item.title || "").replace(/\.[^.]+$/, ""));
-  }, [item.id]);
+      setPlayStart(null);
+      setIsRenaming(false);
+      setDraftTitle((item.title || "").replace(/\.[^.]+$/, ""));
+      setPosterLoaded(false);
+      setPreviewIndex(0);
+      if (cycleTimer.current) {
+        clearInterval(cycleTimer.current);
+        cycleTimer.current = null;
+      }
+    }, [item.id]);
 
   React.useEffect(() => {
     if (shouldLoadVideo && videoRef.current) {
@@ -155,29 +174,27 @@ export const MediaCard: React.FC<MediaCardProps> = ({
   const renderRenameOverlay = () => {
     if (!isRenaming) return null;
     return (
-      <div className="absolute inset-0 z-20 flex items-center justify-center bg-base-100/90 p-4 backdrop-blur">
-        <div className="w-full max-w-sm space-y-2 rounded-xl border border-base-300 bg-base-100 p-3 shadow-lg">
-          <p className="text-xs font-semibold text-base-content/80">
-            Rename media
-          </p>
+      <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 p-4 backdrop-blur">
+        <div className="w-full max-w-sm space-y-2 rounded-xl border border-white/30 bg-black/70 p-3 shadow-lg">
+          <p className="text-xs font-semibold text-white">Rename media</p>
           <input
             value={draftTitle}
             onChange={(e) => setDraftTitle(e.target.value)}
-            className="w-full rounded-lg border border-base-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/40"
+            className="w-full rounded-lg border border-white/40 bg-black/60 px-3 py-2 text-sm text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/40 placeholder:text-white/70"
             placeholder="New title"
           />
           <div className="flex gap-2 text-xs">
             <button
               type="button"
               onClick={handleSubmitRename}
-              className="flex-1 rounded-lg bg-primary px-3 py-1.5 font-semibold text-primary-content hover:bg-primary-focus"
+              className="flex-1 rounded-lg bg-primary px-3 py-1.5 font-semibold text-white hover:bg-primary-focus"
             >
               Save
             </button>
             <button
               type="button"
               onClick={() => setIsRenaming(false)}
-              className="flex-1 rounded-lg bg-base-200 px-3 py-1.5 font-semibold text-base-content hover:bg-base-300"
+              className="flex-1 rounded-lg bg-white/10 px-3 py-1.5 font-semibold text-white hover:bg-white/30"
             >
               Cancel
             </button>
@@ -208,16 +225,16 @@ export const MediaCard: React.FC<MediaCardProps> = ({
           <button
             type="button"
             onClick={() => setIsRenaming(true)}
-            className="absolute right-3 top-3 z-20 rounded-full bg-black/60 px-3 py-1 text-[10px] font-semibold text-white shadow opacity-0 transition duration-200 group-hover:opacity-100 hover:bg-primary hover:text-primary-content"
+            className="absolute right-3 top-3 z-20 px-3 py-1 text-[10px] font-semibold text-white opacity-0 transition duration-200 group-hover:opacity-100"
           >
             Rename
           </button>
         )}
 
         <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between gap-2 bg-gradient-to-t from-black/55 to-transparent px-3 py-2 text-[11px] text-white opacity-0 transition duration-200 group-hover:opacity-100">
-          <span className="truncate font-semibold drop-shadow"></span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white shadow">
-            ⏱ {viewTimeLabel || "Not watched yet"}
+          <span className="truncate font-semibold drop-shadow">{displayTitle}</span>
+          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white shadow-none">
+            ? {viewTimeLabel || "Not watched yet"}
           </span>
         </div>
 
@@ -225,7 +242,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
           <button
             type="button"
             onClick={onDelete}
-            className="absolute left-3 top-3 z-20 rounded-full bg-black/60 px-3 py-1 text-[10px] font-semibold text-white shadow opacity-0 transition duration-200 group-hover:opacity-100 hover:bg-error hover:text-error-content"
+            className="absolute left-3 top-3 z-20 px-3 py-1 text-[10px] font-semibold text-white opacity-0 transition duration-200 group-hover:opacity-100"
           >
             Delete
           </button>
@@ -236,50 +253,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
     );
   };
 
-  const renderVideoPreviewStrip = () => {
-    if (!item.thumbnails || item.thumbnails.length === 0) {
-      return (
-        <div className="flex items-center gap-2 rounded-xl border border-dashed border-base-300/70 bg-base-100/80 px-3 py-2 text-[11px] text-base-content/70">
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-base-200 text-[10px] font-semibold text-base-content/70">
-            +
-          </span>
-          <span>
-            No preview thumbnails yet. Mark this video to generate more thumbs
-            later.
-          </span>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex items-center gap-2 overflow-x-auto rounded-xl border border-base-300/80 bg-base-100/90 p-2">
-        {item.thumbnails.map((thumb, idx) => {
-          const thumbSrc =
-            previewSrcForThumb(thumb) || "/placeholder-gallery-image.png";
-          return (
-            <div
-              key={thumb.index}
-              className="relative h-16 w-20 flex-none overflow-hidden rounded-lg bg-base-200 shadow-sm opacity-0 translate-y-1 animate-[fadeIn_250ms_ease-out_forwards]"
-              style={{ animationDelay: `${idx * 90}ms` }}
-            >
-              <img
-                src={thumbSrc}
-                alt={`${displayTitle} preview ${thumb.index}`}
-                className="h-full w-full object-cover"
-                loading="lazy"
-                onError={(e) => {
-                  e.currentTarget.src = "/placeholder-gallery-image.png";
-                }}
-              />
-              <div className="absolute left-1 top-1 rounded-full bg-base-100/85 px-2 py-0.5 text-[10px] font-semibold text-base-content shadow">
-                #{String(thumb.index).padStart(2, "0")}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+  const renderVideoPreviewStrip = () => null;
 
   const renderVideoBody = () => {
     if (!baseVideoSrc) {
@@ -309,6 +283,20 @@ export const MediaCard: React.FC<MediaCardProps> = ({
             setShouldLoadVideo(true);
           }}
           className="group relative block w-full overflow-hidden rounded-xl aspect-video"
+          onMouseEnter={() => {
+            if (previewSources.length > 1 && !cycleTimer.current) {
+              cycleTimer.current = setInterval(() => {
+                setPreviewIndex((idx) => (idx + 1) % previewSources.length);
+              }, 220);
+            }
+          }}
+          onMouseLeave={() => {
+            if (cycleTimer.current) {
+              clearInterval(cycleTimer.current);
+              cycleTimer.current = null;
+            }
+            setPreviewIndex(0);
+          }}
         >
           <div className="relative h-full w-full overflow-hidden rounded-xl bg-base-200">
             {previewPoster ? (
@@ -372,7 +360,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
           <button
             type="button"
             onClick={onDelete}
-            className="absolute left-3 top-3 z-10 rounded-full bg-black/60 px-3 py-1 text-[10px] font-semibold text-white shadow opacity-0 transition duration-200 group-hover:opacity-100 hover:bg-error hover:text-error-content"
+            className="absolute left-3 top-3 z-10 px-3 py-1 text-[10px] font-semibold text-white opacity-0 transition duration-200 group-hover:opacity-100"
           >
             Delete
           </button>
@@ -381,7 +369,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
           <button
             type="button"
             onClick={() => setIsRenaming(true)}
-            className="absolute right-3 top-3 z-10 rounded-full bg-black/60 px-3 py-1 text-[10px] font-semibold text-white shadow opacity-0 transition duration-200 group-hover:opacity-100 hover:bg-primary hover:text-primary-content"
+            className="absolute right-3 top-3 z-10 px-3 py-1 text-[10px] font-semibold text-white opacity-0 transition duration-200 group-hover:opacity-100"
           >
             Rename
           </button>
@@ -452,8 +440,6 @@ export const MediaCard: React.FC<MediaCardProps> = ({
               {renderDetailsOverlay()}
             </div>
           </div>
-          {/* Video preview strip powered by R2 thumbnails */}
-          {renderVideoPreviewStrip()}
         </div>
       )}
     </div>
