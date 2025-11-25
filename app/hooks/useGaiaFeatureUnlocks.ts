@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAcademyProgress } from "@/app/apollo/Academy/useAcademyProgress";
+import { useAcademyProgress } from "@/app/apollo/academy/useAcademyProgress";
 
 export function useGaiaFeatureUnlocks() {
   const { state } = useAcademyProgress();
