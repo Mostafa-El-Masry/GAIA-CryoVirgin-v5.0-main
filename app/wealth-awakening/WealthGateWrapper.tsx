@@ -9,7 +9,7 @@ export default function WealthGateWrapper() {
 
   if (!wealthUnlocked) {
     return (
-      <main className="mx-auto w-[70vw] px-3 sm:px-4 py-8 space-y-4">
+      <main className="mx-auto max-w-3xl px-3 sm:px-4 py-8 space-y-4">
         <header className="space-y-1">
           <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.22em] gaia-muted">
             Wealth · Locked
@@ -18,8 +18,9 @@ export default function WealthGateWrapper() {
             Keep studying in Apollo to unlock Wealth.
           </h1>
           <p className="text-sm sm:text-base gaia-muted">
-            Wealth awakens only after you complete at least one lesson in Apollo
-            Academy. Any track counts – Programming, Accounting, or Self‑Repair.
+            Wealth awakens only after you complete at least one lesson in
+            Apollo Academy. Any track counts – Programming, Accounting, or
+            Self‑Repair.
           </p>
         </header>
 
@@ -37,9 +38,9 @@ export default function WealthGateWrapper() {
             </span>
           </p>
           <p className="text-[11px] sm:text-xs gaia-muted">
-            Each lesson moves you one step closer to fully unlocking your Wealth
-            map. For now, focus on finishing today&apos;s ritual and one lesson
-            in Apollo.
+            Each lesson moves you one step closer to fully unlocking your
+            Wealth map. For now, focus on finishing today&apos;s ritual and
+            one lesson in Apollo.
           </p>
         </section>
       </main>
