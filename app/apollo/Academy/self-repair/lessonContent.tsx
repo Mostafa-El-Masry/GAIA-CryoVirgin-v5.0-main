@@ -85,7 +85,7 @@ const FIRST_ARC_CONTENT: Record<string, LessonContent> = {
   }
 };
 
-function getLessonContent(lessonCode: string): LessonContent {
+export function getLessonContent(lessonCode: string): LessonContent {
   if (lessonCode in FIRST_ARC_CONTENT) {
     return FIRST_ARC_CONTENT[lessonCode];
   }
