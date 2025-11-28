@@ -13,11 +13,11 @@ import {
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const fieldStyles =
-  'input input-bordered w-full rounded-2xl px-4 py-2 text-sm';
+  'gaia-input w-full rounded-2xl px-4 py-2 text-sm font-medium shadow-sm border gaia-border placeholder:gaia-muted gaia-focus';
 const primaryButton =
-  'btn btn-primary rounded-2xl px-4 py-2 text-sm font-semibold normal-case';
+  'inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold gaia-contrast shadow-sm transition gaia-focus disabled:opacity-60 disabled:cursor-not-allowed';
 const subtleButton =
-  'btn btn-ghost rounded-2xl px-3 py-1 text-xs font-semibold normal-case';
+  'inline-flex items-center justify-center rounded-2xl border gaia-border gaia-surface px-3 py-1 text-xs font-semibold shadow-sm transition hover:shadow gaia-focus disabled:opacity-60 disabled:cursor-not-allowed';
 
 
 type AskPanelProps = {
@@ -172,7 +172,14 @@ export default function AskPanel({ onChange }: AskPanelProps) {
 
       <div className='flex flex-wrap items-center gap-3 text-sm'>
         {statusMessage && <span className='gaia-muted'>{statusMessage}</span>}
-        {error && <span className='font-semibold text-error'>{error}</span>}
+        {error && (
+          <span
+            className='font-semibold'
+            style={{ color: 'var(--gaia-negative)' }}
+          >
+            {error}
+          </span>
+        )}
         {!error && hasHistory && (
           <button className='gaia-muted underline-offset-4 hover:underline' onClick={resetChat}>
             Reset chat
@@ -182,7 +189,7 @@ export default function AskPanel({ onChange }: AskPanelProps) {
 
       <textarea
         ref={taRef}
-        className='textarea textarea-bordered min-h-[220px] w-full rounded-2xl px-4 py-3 text-sm leading-relaxed'
+        className='gaia-input min-h-[220px] w-full rounded-2xl px-4 py-3 text-sm leading-relaxed border gaia-border shadow-sm gaia-focus'
         value={buffer}
         onChange={(e) => setBuffer(e.target.value)}
       />

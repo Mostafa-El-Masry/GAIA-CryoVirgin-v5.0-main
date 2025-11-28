@@ -72,6 +72,10 @@ html[data-theme="dark"] body {
   color: var(--gaia-text-strong) !important;
 }
 
+.gaia-accent {
+  color: var(--gaia-accent, var(--gaia-contrast-bg)) !important;
+}
+
 .gaia-chip {
   background-color: color-mix(in srgb, var(--gaia-surface) 90%, transparent);
   color: var(--gaia-text-default);

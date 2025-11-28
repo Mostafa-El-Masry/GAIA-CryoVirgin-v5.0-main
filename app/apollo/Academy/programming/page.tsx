@@ -227,7 +227,7 @@ export default function ProgrammingTrackPage() {
           </p>
         </div>
 
-        <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-black/30 px-3 py-2 text-xs sm:text-sm">
+        <div className="inline-flex items-center gap-3 rounded-full border gaia-border gaia-ink-soft px-3 py-2 text-xs sm:text-sm shadow-sm">
           <div className="flex flex-col">
             <span className="gaia-muted text-[11px] uppercase tracking-[0.22em]">
               Overall progress
@@ -246,10 +246,10 @@ export default function ProgrammingTrackPage() {
             key={filter.id}
             type="button"
             onClick={() => setActiveArcFilter(filter.id)}
-            className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold border ${
+            className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold border transition ${
               activeArcFilter === filter.id
-                ? "bg-white text-black border-white"
-                : "bg-black/40 text-white border-white/20 hover:border-white/40"
+                ? "gaia-contrast shadow-sm"
+                : "gaia-ink-soft gaia-border gaia-hover-soft"
             }`}
           >
             {filter.label}
@@ -258,7 +258,7 @@ export default function ProgrammingTrackPage() {
       </div>
 
       <section className="space-y-4 mt-2">
-        <article className="rounded-2xl gaia-panel-soft p-4 sm:p-5 shadow-sm border border-white/5">
+        <article className="rounded-2xl gaia-panel-soft p-4 sm:p-5 shadow-sm border gaia-border">
           {activeLesson ? (
             <div className="space-y-3">
               <p className="text-[11px] sm:text-xs gaia-muted uppercase tracking-[0.22em]">
@@ -297,7 +297,7 @@ export default function ProgrammingTrackPage() {
             <button
               type="button"
               onClick={() => setShowSections((prev) => !prev)}
-              className="mt-2 inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold bg-white/10 hover:bg-white/20 text-white"
+              className="mt-2 inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold gaia-ink-soft border gaia-border shadow-sm transition hover:shadow-md gaia-focus"
             >
               {showSections ? "Hide lesson list" : "Show lesson list"}
             </button>
@@ -309,7 +309,7 @@ export default function ProgrammingTrackPage() {
             {visibleSections.map((section) => (
               <article
                 key={section.id}
-                className="rounded-2xl gaia-panel-soft p-4 sm:p-5 shadow-sm border border-white/5"
+                className="rounded-2xl gaia-panel-soft p-4 sm:p-5 shadow-sm border gaia-border"
               >
                 <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.22em] gaia-muted">
                   {section.label}
@@ -337,10 +337,10 @@ export default function ProgrammingTrackPage() {
                       <li
                         id={lesson.id}
                         key={lesson.id}
-                        className={`flex items-baseline justify-between gap-2 border-b border-white/5 pb-1 last:border-b-0 last:pb-0 ${
+                        className={`flex items-baseline justify-between gap-2 border-b gaia-border pb-1 last:border-b-0 last:pb-0 ${
                           locked
                             ? "opacity-50 cursor-not-allowed"
-                            : "cursor-pointer hover:bg-white/5"
+                            : "cursor-pointer gaia-hover-soft"
                         }`}
                         onClick={() => {
                           if (locked) return;
@@ -349,10 +349,10 @@ export default function ProgrammingTrackPage() {
                         }}
                       >
                         <span
-                          className={`inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/30 text-[11px] sm:text-xs ${
+                          className={`inline-flex h-5 w-5 items-center justify-center rounded-full border gaia-border text-[11px] sm:text-xs ${
                             completed
-                              ? "bg-white text-black font-semibold"
-                              : ""
+                              ? "gaia-contrast font-semibold"
+                              : "gaia-ink-faint"
                           }`}
                           aria-hidden="true"
                         >

@@ -33,14 +33,14 @@ const CodePlayground = ({
       <div className="space-y-1">
         <p className="text-[11px] sm:text-xs gaia-muted">Your code</p>
         <textarea
-          className="h-40 w-full rounded-xl border border-white/15 bg-black/40 p-2 text-xs sm:text-sm text-white outline-none focus:border-white/40"
+          className="gaia-input h-40 w-full rounded-xl border gaia-border p-2 text-xs sm:text-sm shadow-sm gaia-focus"
           value={code}
           onChange={(e) => setCode(e.target.value)}
         />
       </div>
       <div className="space-y-1">
         <p className="text-[11px] sm:text-xs gaia-muted">Preview</p>
-        <div className="h-40 w-full overflow-hidden rounded-xl border border-white/15 bg-black">
+        <div className="h-40 w-full overflow-hidden rounded-xl border gaia-border gaia-ink-soft">
           <iframe
             title="Code preview"
             className="h-full w-full border-0"

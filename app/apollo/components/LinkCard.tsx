@@ -14,10 +14,13 @@ export default function LinkCard({ href, title, description, icon }: Props) {
   return (
     <Link
       href={href}
-      className="group block rounded-2xl p-4 sm:p-5 gaia-panel-soft hover:shadow-md transition-colors"
+      className="group block rounded-2xl border gaia-border p-4 sm:p-5 gaia-panel-soft hover:shadow-md transition-colors"
     >
       <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white/5 text-white/90 group-hover:bg-white/10">
+        <div
+          className="flex h-12 w-12 items-center justify-center rounded-lg gaia-ink-soft border gaia-border group-hover:gaia-ink-faint transition"
+          style={{ color: "var(--gaia-text-strong)" }}
+        >
           {icon}
         </div>
 

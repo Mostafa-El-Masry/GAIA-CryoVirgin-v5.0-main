@@ -203,7 +203,7 @@ export default function SelfRepairTrackPage() {
         {arcs.map((arc) => (
           <article
             key={arc.id}
-            className="rounded-2xl gaia-panel-soft p-4 sm:p-5 shadow-sm border border-white/5"
+            className="rounded-2xl gaia-panel-soft p-4 sm:p-5 shadow-sm border gaia-border"
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] gaia-muted">
               {arc.label}
@@ -216,7 +216,7 @@ export default function SelfRepairTrackPage() {
                 <li
                   id={lesson.id}
                   key={lesson.id}
-                  className="flex items-baseline justify-between gap-2 border-b border-white/5 pb-1 last:border-b-0 last:pb-0"
+                  className="flex items-baseline justify-between gap-2 border-b gaia-border pb-1 last:border-b-0 last:pb-0"
                 >
                   <button
                     type="button"

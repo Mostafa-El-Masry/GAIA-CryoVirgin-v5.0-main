@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import type { Section } from '../lib/types';
 
 const textareaStyles =
-  'gaia-input min-h-[260px] w-full rounded-2xl px-4 py-3 text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-black/10';
+  'gaia-input min-h-[260px] w-full rounded-2xl px-4 py-3 text-sm font-medium shadow-sm border gaia-border gaia-focus';
 const buttonStyles =
-  'inline-flex items-center justify-center rounded-2xl border border-transparent bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-sky-600';
+  'inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold gaia-contrast shadow-sm transition hover:shadow-md gaia-focus';
 
 export default function SectionEditor({
   section,

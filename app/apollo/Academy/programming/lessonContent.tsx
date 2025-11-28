@@ -250,10 +250,10 @@ const ProgrammingLessonContent = ({
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold border ${
+            className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold border transition ${
               activeTab === tab
-                ? "bg-white text-black border-white"
-                : "bg-black/40 text-white border-white/20 hover:border-white/40"
+                ? "gaia-contrast shadow-sm"
+                : "gaia-ink-soft gaia-border gaia-hover-soft"
             }`}
           >
             {tab === "study" && "1 - Study"}
@@ -296,7 +296,7 @@ const ProgrammingLessonContent = ({
                   return (
                     <div
                       key={q.id}
-                      className="rounded-xl border border-white/10 bg-black/40 p-3 sm:p-4 space-y-2"
+                      className="rounded-xl border gaia-border gaia-ink-soft p-3 sm:p-4 space-y-2 shadow-sm"
                     >
                       <p className="text-xs sm:text-sm gaia-strong">
                         Q{index + 1}. {q.prompt}
@@ -328,13 +328,14 @@ const ProgrammingLessonContent = ({
                       </div>
                       {quizSubmitted && (
                         <p
-                          className={`text-[11px] sm:text-xs ${
-                            isCorrect
-                              ? "text-emerald-300"
+                          className="text-[11px] sm:text-xs"
+                          style={{
+                            color: isCorrect
+                              ? "var(--gaia-positive)"
                               : isWrong
-                              ? "text-amber-300"
-                              : "gaia-muted"
-                          }`}
+                              ? "var(--gaia-warning)"
+                              : "var(--gaia-text-muted)",
+                          }}
                         >
                           {isCorrect
                             ? "Correct."
@@ -356,12 +357,15 @@ const ProgrammingLessonContent = ({
                   type="button"
                   onClick={handleQuizSubmit}
                   disabled={!quizConfig || !allAnswered}
-                  className="inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold bg-white text-black disabled:bg-white/30 disabled:text-black/50"
+                  className="inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold gaia-contrast shadow-sm transition hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   Check my answers
                 </button>
                 {quizSubmitted && quizConfig && allCorrect && (
-                  <p className="text-[11px] sm:text-xs text-emerald-300">
+                  <p
+                    className="text-[11px] sm:text-xs"
+                    style={{ color: "var(--gaia-positive)" }}
+                  >
                     Great. You&apos;re ready to move to practice.
                   </p>
                 )}
@@ -396,7 +400,7 @@ const ProgrammingLessonContent = ({
           </ul>
 
           <textarea
-            className="mt-2 h-32 w-full rounded-xl border border-white/15 bg-black/40 p-2 text-xs sm:text-sm text-white outline-none focus:border-white/40"
+            className="mt-2 h-32 w-full rounded-xl gaia-input border gaia-border p-2 text-xs sm:text-sm shadow-sm gaia-focus"
             placeholder="Write your explanation or code here..."
             value={practiceText}
             onChange={(e) => {
@@ -410,7 +414,7 @@ const ProgrammingLessonContent = ({
             <button
               type="button"
               onClick={handlePracticeCheck}
-              className="inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold bg-white text-black"
+              className="inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold gaia-contrast shadow-sm transition hover:shadow-md gaia-focus"
             >
               Check practice &amp; mark lesson
             </button>
@@ -420,17 +424,23 @@ const ProgrammingLessonContent = ({
           </div>
 
           {practiceStatus === "error" && practiceMessage && (
-            <p className="text-[11px] sm:text-xs text-amber-300">
+            <p
+              className="text-[11px] sm:text-xs"
+              style={{ color: "var(--gaia-warning)" }}
+            >
               {practiceMessage}
             </p>
           )}
           {practiceStatus === "success" && practiceMessage && (
-            <p className="text-[11px] sm:text-xs text-emerald-300">
+            <p
+              className="text-[11px] sm:text-xs"
+              style={{ color: "var(--gaia-positive)" }}
+            >
               {practiceMessage}
             </p>
           )}
 
-          <div className="mt-4 rounded-xl border border-white/10 bg-black/40 p-3">
+          <div className="mt-4 rounded-xl border gaia-border gaia-ink-soft p-3 shadow-sm">
             <p className="text-[11px] sm:text-xs gaia-muted mb-2">
               Optional: play in the code playground for this lesson. For HTML,
               CSS, and JavaScript lessons, try building the structures we

@@ -114,7 +114,9 @@ export default function ArchiveFullView({
           <div
             style={{
               marginBottom: 12,
-              color: message.startsWith("Failed") ? "#b91c1c" : "#065f46",
+              color: message.startsWith("Failed")
+                ? "var(--gaia-negative)"
+                : "var(--gaia-positive)",
             }}
           >
             {message}
@@ -124,7 +126,15 @@ export default function ArchiveFullView({
                 {" "}
                 <button
                   onClick={() => location.reload()}
-                  style={{ marginLeft: 8, padding: "4px 8px", borderRadius: 8 }}
+                  style={{
+                    marginLeft: 8,
+                    padding: "4px 8px",
+                    borderRadius: 8,
+                    background:
+                      "color-mix(in srgb, var(--gaia-surface-soft) 92%, transparent)",
+                    border:
+                      "1px solid color-mix(in srgb, var(--gaia-border) 82%, transparent)",
+                  }}
                 >
                   Refresh now
                 </button>

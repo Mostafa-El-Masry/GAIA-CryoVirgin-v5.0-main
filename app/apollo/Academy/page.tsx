@@ -184,7 +184,7 @@ export default function AcademyPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 space-y-6">
       {/* Daily study dashboard */}
-      <section className="rounded-2xl gaia-panel-soft p-4 sm:p-5 shadow-sm border border-white/5 space-y-2">
+      <section className="rounded-2xl gaia-panel-soft p-4 sm:p-5 shadow-sm border gaia-border space-y-2">
         <p className="text-xs gaia-muted">Academy · Daily Schedule</p>
         <h1 className="text-xl font-semibold">
           Welcome, Sasa.
@@ -193,7 +193,7 @@ export default function AcademyPage() {
           Today is <span className="gaia-strong">{niceDate}</span>.
         </p>
 
-        <div className="mt-3 rounded-xl border border-white/10 bg-black/10 p-3 space-y-2">
+        <div className="mt-3 rounded-xl border gaia-border gaia-ink-soft p-3 space-y-2">
           <p className="text-xs gaia-muted">
             Today&apos;s focus:{" "}
             <span className="gaia-strong">
@@ -220,7 +220,7 @@ export default function AcademyPage() {
                 {suggestedLessons.map((lesson) => (
                   <li
                     key={lesson.id}
-                    className="flex items-baseline justify-between gap-2 rounded-lg bg-black/20 px-2 py-1"
+                    className="flex items-baseline justify-between gap-2 rounded-lg gaia-ink-faint border gaia-border px-2 py-1 shadow-sm"
                   >
                     <span className="gaia-strong text-[11px] w-12">
                       {lesson.code}
@@ -233,9 +233,9 @@ export default function AcademyPage() {
               <div className="mt-2">
                 <Link
                   href={`/apollo/academy/${todayTrackId}#${suggestedLessons[0]?.id}`}
-                  className="inline-flex items-center rounded-lg border border-white/20 px-3 py-1.5 text-[11px] font-semibold gaia-accent hover:border-white/40 hover:bg-white/5 transition"
+                  className="inline-flex items-center rounded-lg gaia-contrast px-3 py-1.5 text-[11px] font-semibold shadow-sm transition hover:shadow-md"
                 >
-                  Start today&apos;s session →
+                  Start today&apos;s session &rarr;
                 </Link>
               </div>
             </div>
@@ -260,7 +260,7 @@ export default function AcademyPage() {
           )}
 
           {pending.days > 0 && (
-            <div className="mt-2 rounded-lg border border-white/10 bg-black/10 p-2.5">
+            <div className="mt-2 rounded-lg border gaia-border gaia-ink-faint p-2.5 shadow-sm">
               <p className="text-[11px] font-semibold gaia-strong">
                 Catch-up since your last visit
                 {lastVisitNiceDate ? ` on ${lastVisitNiceDate}` : ""}:
@@ -293,7 +293,7 @@ export default function AcademyPage() {
           <Link
             key={track.id}
             href={track.href}
-            className="group block rounded-2xl gaia-panel-soft p-4 sm:p-5 shadow-sm border border-white/5 hover:border-white/15 hover:shadow-md transition"
+            className="group block rounded-2xl gaia-panel-soft p-4 sm:p-5 shadow-sm border gaia-border hover:gaia-hover-soft hover:shadow-md transition"
           >
             <div className="space-y-2">
               <h2 className="text-sm font-semibold gaia-strong">
@@ -310,7 +310,7 @@ export default function AcademyPage() {
               </div>
 
               <p className="mt-3 text-[11px] font-semibold gaia-accent group-hover:underline">
-                Enter path →
+                Enter path &rarr;
               </p>
             </div>
           </Link>

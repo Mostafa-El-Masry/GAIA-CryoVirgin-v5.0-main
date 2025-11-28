@@ -8,9 +8,9 @@ import type { ApolloData } from "../lib/types";
 import { readJSON, writeJSON } from "@/lib/user-storage";
 
 const inputStyles =
-  "gaia-input w-full rounded-2xl px-4 py-2 text-sm font-semibold shadow-sm placeholder:gaia-muted focus:outline-none focus:ring-2 focus:ring-black/10";
+  "gaia-input w-full rounded-2xl px-4 py-2 text-sm font-semibold shadow-sm placeholder:gaia-muted border gaia-border gaia-focus";
 const buttonStyles =
-  "inline-flex items-center justify-center rounded-2xl border gaia-border gaia-surface px-4 py-2 text-sm font-semibold shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-black/10";
+  "inline-flex items-center justify-center rounded-2xl border gaia-border gaia-surface px-4 py-2 text-sm font-semibold shadow-sm transition hover:shadow-md gaia-focus";
 
 const STORAGE_KEY = "gaia_apollo_v1_notes";
 
@@ -94,14 +94,14 @@ export default function ArchiveSidebar({
     ) ?? [];
 
   return (
-    <aside className="gaia-surface flex h-full flex-col gap-5 rounded-3xl border gaia-border p-6 shadow-lg ring-1 ring-black/5">
+    <aside className="gaia-surface flex h-full flex-col gap-5 rounded-3xl border gaia-border p-6 shadow-lg gaia-ring-soft">
       <header className="flex items-center justify-end">
         <button
           type="button"
           onClick={() => setOpen((s) => !s)}
           aria-pressed={!open}
           title={open ? "Collapse archives" : "Open archives"}
-          className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-600 text-white shadow-lg shadow-sky-900/25"
+          className="flex h-14 w-14 items-center justify-center rounded-2xl gaia-contrast shadow-md transition-transform gaia-focus hover:-translate-y-0.5"
         >
           <BookIcon />
         </button>
@@ -153,8 +153,8 @@ export default function ArchiveSidebar({
                     key={section.id}
                     className={`w-full rounded-2xl border px-4 py-3 text-left shadow-sm transition ${
                       isActive
-                        ? "border-sky-700 bg-sky-700 text-white shadow-sky-900/30"
-                        : "gaia-border gaia-surface hover:shadow"
+                        ? "gaia-contrast shadow-md"
+                        : "gaia-panel hover:shadow"
                     }`}
                     onClick={() => setSectionId(section.id)}
                   >

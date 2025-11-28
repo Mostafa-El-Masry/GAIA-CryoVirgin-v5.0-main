@@ -3,7 +3,6 @@
 import GuardianTodayCard from "@/app/components/guardian/GuardianTodayCard";
 import Active from "./Active";
 import { useDailyRitualGate } from "../hooks/useDailyRitualGate";
-import Entry from "./Entry";
 import TodoDaily from "./TodoDaily";
 import GuardianNudgeClient from "@/app/components/guardian/GuardianNudgeClient";
 import DashboardCorePanel from "@/app/components/dashboard/DashboardCorePanel";
@@ -23,7 +22,6 @@ export default function DashboardClient() {
           <GuardianTodayCard />
           <GuardianNudgeClient />
           <Active />
-          <Entry />
         </>
       )}
     </div>

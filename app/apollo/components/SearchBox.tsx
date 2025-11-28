@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 
 const inputStyles =
-  'gaia-input w-full rounded-2xl px-4 py-2 text-sm font-medium shadow-sm placeholder:gaia-muted focus:outline-none focus:ring-2 focus:ring-black/10';
+  'gaia-input w-full rounded-2xl px-4 py-2 text-sm font-medium shadow-sm placeholder:gaia-muted border gaia-border gaia-focus';
 
 export default function SearchBox({
   value,
