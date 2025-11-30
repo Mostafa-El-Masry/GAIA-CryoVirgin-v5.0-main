@@ -10,6 +10,7 @@ export function getFoundationsStudy(lessonCode: string): StudyDescription | null
     case "0.1":
       return {
         title: "Computer Basics: Files, Folders, and Comfort",
+        videoUrl: "https://www.youtube.com/watch?v=O5nskjZ_GoI",
         paragraphs: [
           "Before touching code, get comfortable with the basics: files, folders, paths, and how to navigate them. Most errors early on come from being in the wrong folder or not knowing where a file lives.",
           "Practice seeing your machine as a tree: a root (C:\\ or /), then folders (like /Users/sasa or C:\\Users\\Sasa), then project folders (like gaia), then files inside.",
@@ -19,6 +20,7 @@ export function getFoundationsStudy(lessonCode: string): StudyDescription | null
     case "0.2":
       return {
         title: "How Does the Web Work? (First look)",
+        videoUrl: "https://www.youtube.com/watch?v=AEaKrq3SpW8",
         paragraphs: [
           "The web is a conversation. Your browser (client) sends a request to a server. The server responds with HTML, CSS, JS, or data. The browser renders the response.",
           "Every GAIA surface you build will rely on this loop: request, response, render. Understanding this at a high level makes later topics less mysterious.",
@@ -28,6 +30,7 @@ export function getFoundationsStudy(lessonCode: string): StudyDescription | null
     case "0.3":
       return {
         title: "Installation Overview",
+        videoUrl: "https://www.youtube.com/watch?v=fBNz5xF-Kx4",
         paragraphs: [
           "You will install a few core tools: a modern browser (Chrome/Firefox), Node.js (runtime + npm), Git (version control), and VS Code (editor).",
           "Keep everything organized in a single workspace folder (for example C:\\gaia or ~/gaia). Your projects and repos will live inside it.",
@@ -127,6 +130,268 @@ export function getFoundationsStudy(lessonCode: string): StudyDescription | null
 
 export function getFoundationsQuiz(lessonCode: string): QuizConfig | null {
   switch (lessonCode) {
+
+    case "0.1":
+      return {
+        id: "quiz-0-1",
+        title: "Check your understanding of computer basics",
+        questions: [
+          {
+            id: "q1",
+            prompt:
+              "Which description best matches a folder on your computer?",
+            options: [
+              {
+                id: "q1-a",
+                label: "A single file that stores text.",
+              },
+              {
+                id: "q1-b",
+                label: "A container that can hold other folders and files.",
+              },
+              {
+                id: "q1-c",
+                label: "A program that runs code.",
+              },
+              {
+                id: "q1-d",
+                label: "A backup copy stored somewhere in the cloud.",
+              },
+            ],
+            correctOptionId: "q1-b",
+            explanation:
+              "A folder (or directory) is a container that groups other folders and files so you can keep projects organised.",
+          },
+          {
+            id: "q2",
+            prompt:
+              "Why is it helpful to think of your disk as a tree: root → folders → files?",
+            options: [
+              {
+                id: "q2-a",
+                label: "Because it makes the computer run faster.",
+              },
+              {
+                id: "q2-b",
+                label:
+                  "Because it helps you not get lost and know exactly where each project lives.",
+              },
+              {
+                id: "q2-c",
+                label: "Because you must always use the command line.",
+              },
+              {
+                id: "q2-d",
+                label:
+                  "Because Windows will not let you create GAIA projects anywhere else.",
+              },
+            ],
+            correctOptionId: "q2-b",
+            explanation:
+              "Thinking in folders and paths is like having a map of your machine; you always know where your projects live.",
+          },
+          {
+            id: "q3",
+            prompt:
+              "Which of these is a safe habit when you are organising GAIA projects?",
+            options: [
+              {
+                id: "q3-a",
+                label: "Saving everything directly on the Desktop with random names.",
+              },
+              {
+                id: "q3-b",
+                label:
+                  "Keeping GAIA projects in one workspace folder and naming folders clearly.",
+              },
+              {
+                id: "q3-c",
+                label: "Renaming system folders like \"Program Files\".",
+              },
+              {
+                id: "q3-d",
+                label: "Deleting folders you do not recognise in C:\\ to free space.",
+              },
+            ],
+            correctOptionId: "q3-b",
+            explanation:
+              "A dedicated workspace folder with clear names makes your projects easy to find and much harder to break.",
+          },
+        ],
+      };
+    case "0.2":
+      return {
+        id: "quiz-0-2",
+        title: "Check your understanding of how the web works (first look)",
+        questions: [
+          {
+            id: "q1",
+            prompt:
+              "In the client–server model, your browser is the…",
+            options: [
+              {
+                id: "q1-a",
+                label: "Server that stores all the websites.",
+              },
+              {
+                id: "q1-b",
+                label: "Client that sends requests and shows responses.",
+              },
+              {
+                id: "q1-c",
+                label: "Database that stores user data.",
+              },
+              {
+                id: "q1-d",
+                label: "Router that sends Wi‑Fi to your phone.",
+              },
+            ],
+            correctOptionId: "q1-b",
+            explanation:
+              "The browser is the client. It sends requests to servers and then renders the responses it receives.",
+          },
+          {
+            id: "q2",
+            prompt: "What is an HTTP response?",
+            options: [
+              {
+                id: "q2-a",
+                label: "A file stored on your Desktop.",
+              },
+              {
+                id: "q2-b",
+                label:
+                  "The data a server sends back after receiving your request.",
+              },
+              {
+                id: "q2-c",
+                label: "The Wi‑Fi password.",
+              },
+              {
+                id: "q2-d",
+                label: "The name of the website.",
+              },
+            ],
+            correctOptionId: "q2-b",
+            explanation:
+              "HTTP is the protocol of the web. The server sends an HTTP response (HTML, CSS, JS, JSON, etc.) back to the client.",
+          },
+          {
+            id: "q3",
+            prompt: "Which pair is correct?",
+            options: [
+              {
+                id: "q3-a",
+                label: "HTML = styling, CSS = structure and content.",
+              },
+              {
+                id: "q3-b",
+                label:
+                  "HTML = structure and content, CSS = visual appearance and layout.",
+              },
+              {
+                id: "q3-c",
+                label: "CSS = database, JS = images.",
+              },
+              {
+                id: "q3-d",
+                label: "JS = your web address, HTML = router settings.",
+              },
+            ],
+            correctOptionId: "q3-b",
+            explanation:
+              "HTML defines the structure and content of the page, while CSS controls how it looks.",
+          },
+        ],
+      };
+    case "0.3":
+      return {
+        id: "quiz-0-3",
+        title: "Check your understanding of the installation overview",
+        questions: [
+          {
+            id: "q1",
+            prompt:
+              "Which tools are core to install before starting GAIA programming practice?",
+            options: [
+              {
+                id: "q1-a",
+                label: "Only a design tool like Photoshop.",
+              },
+              {
+                id: "q1-b",
+                label:
+                  "A modern browser, Node.js, Git, and a code editor like VS Code.",
+              },
+              {
+                id: "q1-c",
+                label: "Only Excel and PowerPoint.",
+              },
+              {
+                id: "q1-d",
+                label: "No tools at all, just Notepad.",
+              },
+            ],
+            correctOptionId: "q1-b",
+            explanation:
+              "You will mainly use a browser, Node.js + npm, Git, and VS Code to build and run GAIA projects.",
+          },
+          {
+            id: "q2",
+            prompt:
+              "Why do we keep all GAIA projects inside one workspace folder (like C:\\Users\\Sasa\\gaia or ~/gaia)?",
+            options: [
+              {
+                id: "q2-a",
+                label: "So we can delete everything quickly.",
+              },
+              {
+                id: "q2-b",
+                label:
+                  "So all repos and projects live in one predictable, organised place.",
+              },
+              {
+                id: "q2-c",
+                label: "Because VS Code only works inside that folder.",
+              },
+              {
+                id: "q2-d",
+                label: "Because the internet cannot see any other folder.",
+              },
+            ],
+            correctOptionId: "q2-b",
+            explanation:
+              "A single workspace folder keeps your projects tidy and makes paths much easier to reason about.",
+          },
+          {
+            id: "q3",
+            prompt:
+              "If an installation feels overwhelming, what attitude does this lesson recommend?",
+            options: [
+              {
+                id: "q3-a",
+                label: "Stop completely and never come back.",
+              },
+              {
+                id: "q3-b",
+                label: "Do everything in one exhausting night no matter what.",
+              },
+              {
+                id: "q3-c",
+                label:
+                  "Take it step by step, accept a bit of confusion, and write notes for future‑you.",
+              },
+              {
+                id: "q3-d",
+                label: "Ask someone else to do everything and never learn it.",
+              },
+            ],
+            correctOptionId: "q3-c",
+            explanation:
+              "You are allowed to move slowly. Calm, honest notes and small steps are better than one big heroic push.",
+          },
+        ],
+      };
     case "1.1":
       return {
         id: "quiz-1-1",

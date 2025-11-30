@@ -3,6 +3,7 @@ import type { LessonContentData } from "../../../../lesson/lessonContent";
 export const selfLesson11: LessonContentData = {
   study: {
     title: "Mapping Your Current Rhythm (Sleep, Food, Energy)",
+    videoUrl: "https://www.youtube.com/watch?v=nm1TxQj9IsQ",
     paragraphs: [
       "Today you are not fixing anything. You are just putting the current pattern on the table so it stops hiding in the dark.",
       "Take one day — either today or yesterday — and write it as a timeline. When did you wake up, nap, eat, scroll, play, watch, and sleep? No judgment. Just facts.",

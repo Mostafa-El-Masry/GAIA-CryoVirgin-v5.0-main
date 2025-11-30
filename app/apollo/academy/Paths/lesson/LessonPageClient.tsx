@@ -165,6 +165,12 @@ export default function LessonPageClient({
   }
 
   const activeCompleted = isLessonCompleted(trackId, lessonId);
+  const allCorrect =
+    quizSubmitted &&
+    !!lessonContent.quiz &&
+    lessonContent.quiz.questions.every(
+      (q) => quizAnswers[q.id] === q.correctOptionId
+    );
 
   const toggleArc = (arcId: string) => {
     setOpenArcIds((prev) => {
@@ -179,17 +185,17 @@ export default function LessonPageClient({
   };
 
   return (
-    <main className="mx-auto max-w-[75vw] px-4 py-8 sm:px-6 lg:py-10 space-y-6">
-      <header className="rounded-2xl gaia-panel-soft border gaia-border p-4 sm:p-5 shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] gaia-muted">
+    <main className="mx-auto max-w-[90vw] lg:max-w-[75vw] px-4 lg:px-0 py-10 space-y-6">
+      <header className="rounded-3xl border gaia-border bg-[var(--gaia-surface)] p-5 sm:p-6 shadow-md space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[var(--gaia-text-muted)]">
               {path.title}
             </p>
-            <h1 className="text-xl sm:text-2xl font-semibold gaia-strong">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-[var(--gaia-foreground)] leading-tight">
               {activeLesson.title}
             </h1>
-            <p className="text-xs gaia-muted">
+            <p className="text-sm text-[var(--gaia-text-muted)]">
               Course {activeArc.label} - Lesson {activeLesson.code}
             </p>
           </div>
@@ -199,21 +205,18 @@ export default function LessonPageClient({
               type="button"
               onClick={() => toggleLessonCompleted(trackId, lessonId)}
               className={[
-                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs sm:text-sm font-semibold transition shadow-sm",
                 activeCompleted
-                  ? "border-emerald-400 bg-emerald-400/10 text-emerald-50"
-                  : "gaia-border gaia-ink-soft",
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                  : "gaia-border bg-[var(--gaia-surface-soft)] text-[var(--gaia-text-default)] hover:bg-[var(--gaia-surface-soft)]/80",
               ].join(" ")}
             >
-              <span className="text-[13px]">
-                {activeCompleted ? "done" : "pending"}
-              </span>
-              {activeCompleted ? "Mark as incomplete" : "Mark complete"}
+              {activeCompleted ? "Done" : "Mark complete"}
             </button>
             {nextLesson && (
               <Link
                 href={`/apollo/academy/Paths/lesson/${nextLesson.id}`}
-                className="inline-flex items-center gap-2 rounded-full border gaia-border px-3 py-1.5 text-xs font-semibold gaia-ink-soft"
+                className="inline-flex items-center gap-2 rounded-full border gaia-border px-4 py-2 text-xs sm:text-sm font-semibold text-[var(--gaia-foreground)] bg-[var(--gaia-surface-soft)] hover:bg-[var(--gaia-surface)] shadow-sm"
               >
                 {"Next lesson ->"}
               </Link>
@@ -221,36 +224,36 @@ export default function LessonPageClient({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3 text-[11px] sm:text-xs gaia-muted">
-          <span className="inline-flex items-center gap-1 rounded-full border gaia-border px-3 py-1">
+        <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-[var(--gaia-text-muted)]">
+          <span className="inline-flex items-center gap-2 rounded-full border gaia-border px-3 py-1.5 bg-[var(--gaia-surface-soft)]">
             Course: {activeArc.title}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full border gaia-border px-3 py-1">
+          <span className="inline-flex items-center gap-2 rounded-full border gaia-border px-3 py-1.5 bg-[var(--gaia-surface-soft)]">
             Path: {path.title}
           </span>
         </div>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-[360px,minmax(0,1fr)]">
-        <aside className="rounded-2xl gaia-panel-soft border gaia-border bg-white p-4 sm:p-5 space-y-3 h-fit">
+      <div className="grid gap-6 lg:grid-cols-[320px,minmax(0,1fr)]">
+        <aside className="rounded-2xl border gaia-border bg-[var(--gaia-surface)] p-5 space-y-4 shadow-sm h-fit lg:sticky lg:top-6">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] gaia-muted">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--gaia-text-muted)]">
                 Course outline
               </p>
-              <p className="text-xs gaia-muted">
+              <p className="text-sm text-[var(--gaia-text-muted)]">
                 Browse lessons and jump around.
               </p>
             </div>
             <Link
               href={`/apollo/academy/Paths/${path.slug}`}
-              className="text-[11px] font-semibold gaia-ink-soft"
+              className="text-xs font-semibold text-[var(--gaia-foreground)] hover:text-info"
             >
               {"Path home ->"}
             </Link>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {arcs.map((arc) => {
               const arcCompleted = arc.lessons.filter((lesson) =>
                 isLessonCompleted(trackId, lesson.id)
@@ -261,29 +264,29 @@ export default function LessonPageClient({
               return (
                 <div
                   key={arc.id}
-                  className="rounded-xl border gaia-border bg-white/5 shadow-sm overflow-hidden"
+                  className="rounded-xl border gaia-border bg-[var(--gaia-surface-soft)] shadow-sm overflow-hidden"
                 >
                   <button
                     type="button"
                     onClick={() => toggleArc(arc.id)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-left"
+                    className="w-full flex items-center justify-between px-3 py-3 text-left hover:bg-[var(--gaia-surface)] transition-colors"
                   >
                     <div className="flex flex-col">
-                      <span className="text-[10px] uppercase tracking-[0.18em] gaia-muted">
+                      <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--gaia-text-muted)]">
                         Course {arc.label}
                       </span>
-                      <span className="text-xs font-semibold gaia-strong leading-snug text-left">
+                      <span className="text-xs font-semibold text-[var(--gaia-foreground)] leading-snug text-left">
                         {arc.title}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] gaia-muted">
+                    <div className="flex items-center gap-2 text-[11px] text-[var(--gaia-text-muted)]">
                       <span>{formatProgress(arcCompleted, arcTotal)}</span>
                       <span
                         className={[
-                          "flex h-6 w-6 items-center justify-center rounded-full border text-xs",
+                          "flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold",
                           isOpen
                             ? "border-info bg-info/10 text-info"
-                            : "gaia-border",
+                            : "gaia-border text-[var(--gaia-text-muted)]",
                         ].join(" ")}
                       >
                         {isOpen ? "-" : "+"}
@@ -292,7 +295,7 @@ export default function LessonPageClient({
                   </button>
 
                   {isOpen && (
-                    <div className="border-t gaia-border divide-y divide-slate-100/20">
+                    <div className="border-t gaia-border divide-y divide-slate-100/40">
                       {arc.lessons.map((lesson) => {
                         const isActive = lesson.id === lessonId;
                         const isDone = isLessonCompleted(trackId, lesson.id);
@@ -301,32 +304,35 @@ export default function LessonPageClient({
                             key={lesson.id}
                             href={`/apollo/academy/Paths/lesson/${lesson.id}`}
                             className={[
-                              "flex items-center gap-3 px-3 py-2 text-xs transition",
+                              "flex items-center gap-3 px-3 py-2 text-sm transition-colors",
                               isActive
                                 ? "bg-info/10 border-l-2 border-info"
-                                : "hover:bg-white/5",
+                                : "hover:bg-[var(--gaia-surface)]",
                             ].join(" ")}
                           >
                             <span
                               className={[
-                                "flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-semibold",
+                                "flex h-7 w-7 items-center justify-center rounded-full border text-[12px] font-semibold",
                                 isDone
-                                  ? "border-emerald-400 bg-emerald-400/10 text-emerald-200"
-                                  : "gaia-border gaia-muted",
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                  : "gaia-border text-[var(--gaia-text-muted)] bg-[var(--gaia-surface)]",
                               ].join(" ")}
                             >
                               {lesson.code}
                             </span>
-                            <span
-                              className={[
-                                "leading-snug text-left break-words",
-                                isDone
-                                  ? "gaia-muted line-through"
-                                  : "gaia-strong",
-                              ].join(" ")}
-                            >
-                              {lesson.title}
-                            </span>
+                            <div className="flex flex-col leading-tight text-left">
+                              <span
+                                className={[
+                                  "text-[var(--gaia-foreground)]",
+                                  isDone ? "opacity-70" : "font-semibold",
+                                ].join(" ")}
+                              >
+                                {lesson.title}
+                              </span>
+                              <span className="text-[11px] text-[var(--gaia-text-muted)]">
+                                {isDone ? "Completed" : "In progress"}
+                              </span>
+                            </div>
                           </Link>
                         );
                       })}
@@ -338,19 +344,19 @@ export default function LessonPageClient({
           </div>
         </aside>
 
-        <section className="rounded-2xl gaia-panel-soft border gaia-border p-4 sm:p-6 space-y-4 shadow-sm">
-          <div className="rounded-xl border gaia-border bg-black/70 aspect-video overflow-hidden relative">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <button
-                type="button"
-                className="h-16 w-16 rounded-full bg-white/95 text-black flex items-center justify-center text-sm font-semibold shadow-lg"
-              >
+        <section className="rounded-3xl border gaia-border bg-[var(--gaia-surface)] p-5 sm:p-7 space-y-5 shadow-md">
+          <div className="rounded-2xl border gaia-border bg-[var(--gaia-surface-soft)] aspect-video overflow-hidden relative flex items-center justify-center text-center">
+            <div className="flex flex-col items-center gap-2 text-[var(--gaia-text-muted)]">
+              <div className="h-14 w-14 rounded-full border gaia-border bg-[var(--gaia-surface)] shadow-sm flex items-center justify-center text-sm font-semibold text-[var(--gaia-foreground)]">
                 Play
-              </button>
+              </div>
+              <p className="text-sm text-[var(--gaia-text-muted)]">
+                Lesson video placeholder
+              </p>
             </div>
           </div>
 
-          <div className="border-b gaia-border flex gap-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2 rounded-full border gaia-border bg-[var(--gaia-surface-soft)] p-1 text-sm font-semibold">
             {tabs.map((tab) => {
               const isActive = tab === activeTab;
               return (
@@ -359,45 +365,48 @@ export default function LessonPageClient({
                   type="button"
                   onClick={() => setActiveTab(tab)}
                   className={[
-                    "px-3 py-2 font-semibold transition",
+                    "px-4 py-2 rounded-full transition-colors",
                     isActive
-                      ? "border-b-2 border-info text-info"
-                      : "gaia-muted hover:text-info",
+                      ? "bg-[var(--gaia-surface)] text-[var(--gaia-foreground)] shadow-sm border gaia-border"
+                      : "text-[var(--gaia-text-muted)] hover:text-[var(--gaia-foreground)]",
                   ].join(" ")}
                 >
                   {tab === "lesson" && "Lesson"}
                   {tab === "quiz" && "Quiz"}
                   {tab === "downloads" && "Downloads"}
-                  {tab === "notes" && "Notes"}
+                  {tab === "notes" &&
+                    (trackId === "programming" ? "Playground" : "Notes")}
                 </button>
               );
             })}
           </div>
 
           {activeTab === "lesson" && (
-            <div className="space-y-4 text-sm sm:text-base gaia-muted leading-relaxed">
-              <div className="space-y-3">
-                <h3 className="text-base sm:text-lg font-semibold gaia-strong">
-                  {lessonContent.study.title}
-                </h3>
-                <div className="space-y-3">
-                  {lessonContent.study.paragraphs.map((paragraph, idx) => (
-                    <p key={idx} className="leading-relaxed">
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <article className="prose prose-slate max-w-none text-[var(--gaia-text-default)] prose-headings:mt-0 prose-headings:text-[var(--gaia-foreground)] prose-p:leading-7 prose-p:text-[var(--gaia-text-default)] prose-ul:pl-5 prose-li:marker:text-[var(--gaia-text-muted)] prose-strong:text-[var(--gaia-foreground)]">
+              <h3 className="text-2xl font-semibold text-[var(--gaia-foreground)] leading-tight">
+                {lessonContent.study.title}
+              </h3>
+              {lessonContent.study.paragraphs.map((paragraph, idx) => (
+                <p key={idx}>{paragraph}</p>
+              ))}
+            </article>
           )}
 
           {activeTab === "quiz" && (
-            <div className="space-y-3 text-sm sm:text-base gaia-muted">
+            <div className="space-y-4 text-sm sm:text-base text-[var(--gaia-text-default)]">
               {lessonContent.quiz ? (
                 <>
-                  <h3 className="text-base sm:text-lg font-semibold gaia-strong">
-                    {lessonContent.quiz.title}
-                  </h3>
+                  <div className="space-y-1">
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--gaia-text-muted)]">
+                      Quick check
+                    </p>
+                    <h3 className="text-xl sm:text-2xl font-semibold text-[var(--gaia-foreground)] leading-tight">
+                      {lessonContent.quiz.title}
+                    </h3>
+                    <p className="text-sm text-[var(--gaia-text-muted)]">
+                      Answer each question and then check for feedback.
+                    </p>
+                  </div>
                   <div className="space-y-3">
                     {lessonContent.quiz.questions.map((q, index) => {
                       const selected = quizAnswers[q.id];
@@ -410,21 +419,45 @@ export default function LessonPageClient({
                       return (
                         <div
                           key={q.id}
-                          className="rounded-xl border gaia-border gaia-panel-soft p-3 sm:p-4 space-y-2"
+                          className="rounded-2xl border gaia-border bg-[var(--gaia-surface-soft)] p-4 sm:p-5 shadow-sm space-y-3"
                         >
-                          <p className="text-xs sm:text-sm gaia-strong">
-                            Q{index + 1}. {q.prompt}
-                          </p>
-                          <div className="space-y-1.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-sm sm:text-base font-semibold text-[var(--gaia-foreground)] leading-relaxed">
+                              <span className="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--gaia-surface)] border gaia-border text-[12px] font-bold">
+                                {index + 1}
+                              </span>
+                              {q.prompt}
+                            </p>
+                            {quizSubmitted && (
+                              <span
+                                className={[
+                                  "inline-flex h-7 w-7 items-center justify-center rounded-full border text-[12px] font-semibold",
+                                  isCorrect
+                                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                                    : isWrong
+                                    ? "border-amber-300 bg-amber-50 text-amber-700"
+                                    : "gaia-border text-[var(--gaia-text-muted)]",
+                                ].join(" ")}
+                              >
+                                {isCorrect ? "OK" : isWrong ? "X" : "?"}
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-2">
                             {q.options.map((opt) => (
                               <label
                                 key={opt.id}
-                                className="flex items-center gap-2 text-[11px] sm:text-xs gaia-muted cursor-pointer"
+                                className={[
+                                  "flex items-start gap-3 rounded-lg border border-transparent px-2 py-2 cursor-pointer transition-colors",
+                                  selected === opt.id
+                                    ? "border-info/60 bg-info/10 text-[var(--gaia-foreground)]"
+                                    : "hover:border-[var(--gaia-border)] hover:bg-[var(--gaia-surface)] text-[var(--gaia-text-default)]",
+                                ].join(" ")}
                               >
                                 <input
                                   type="radio"
                                   name={q.id}
-                                  className="h-3 w-3"
+                                  className="mt-1 h-4 w-4 accent-emerald-500"
                                   checked={selected === opt.id}
                                   onChange={() => {
                                     setQuizAnswers((prev) => ({
@@ -440,12 +473,12 @@ export default function LessonPageClient({
                           </div>
                           {quizSubmitted && (
                             <p
-                              className={`text-[11px] sm:text-xs ${
+                              className={`text-xs sm:text-sm ${
                                 isCorrect
-                                  ? "text-emerald-600"
+                                  ? "text-emerald-700"
                                   : isWrong
-                                  ? "text-amber-600"
-                                  : "gaia-muted"
+                                  ? "text-amber-700"
+                                  : "text-[var(--gaia-text-muted)]"
                               }`}
                             >
                               {isCorrect
@@ -455,8 +488,8 @@ export default function LessonPageClient({
                                 : "Select an answer to check."}
                             </p>
                           )}
-                          {quizSubmitted && (
-                            <p className="text-[11px] sm:text-xs gaia-muted">
+                          {quizSubmitted && q.explanation && (
+                            <p className="text-xs sm:text-sm text-[var(--gaia-text-muted)]">
                               {q.explanation}
                             </p>
                           )}
@@ -469,37 +502,19 @@ export default function LessonPageClient({
                     <button
                       type="button"
                       onClick={() => setQuizSubmitted(true)}
-                      className="inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold bg-white text-black"
+                      className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold bg-[var(--gaia-foreground)] text-[var(--gaia-contrast-text)] shadow-sm hover:shadow-md transition"
                     >
                       Check answers
                     </button>
-                    {quizSubmitted &&
-                      lessonContent.quiz.questions.every(
-                        (q) => quizAnswers[q.id] === q.correctOptionId
-                      ) && (
-                        <p className="text-[11px] sm:text-xs text-emerald-600">
-                          Great. All answers correct.
-                        </p>
-                      )}
+                    {allCorrect && (
+                      <p className="text-sm font-semibold text-emerald-700">
+                        All answers correct.
+                      </p>
+                    )}
                   </div>
-
-                  {trackId === "programming" && (
-                    <div className="mt-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <p className="gaia-strong text-base">Code playground</p>
-                        <p className="text-[10px] sm:text-xs gaia-muted">
-                          Practice what you just studied.
-                        </p>
-                      </div>
-                      <CodePlayground
-                        initialCode={defaultCodeSnippet}
-                        language={codeLanguage}
-                      />
-                    </div>
-                  )}
                 </>
               ) : (
-                <p className="text-xs sm:text-sm gaia-muted">
+                <p className="text-sm text-[var(--gaia-text-muted)]">
                   Quiz coming soon for this lesson.
                 </p>
               )}
@@ -507,9 +522,11 @@ export default function LessonPageClient({
           )}
 
           {activeTab === "downloads" && (
-            <div className="space-y-2 text-sm gaia-muted">
-              <p className="gaia-strong text-base">Downloads</p>
-              <ul className="list-disc pl-5 space-y-1">
+            <div className="space-y-3 text-sm text-[var(--gaia-text-default)]">
+              <p className="text-base font-semibold text-[var(--gaia-foreground)]">
+                Downloads
+              </p>
+              <ul className="list-disc pl-5 space-y-2 text-[var(--gaia-text-muted)]">
                 <li>Lesson slides (coming soon)</li>
                 <li>Worksheet or cheat sheet (coming soon)</li>
               </ul>
@@ -517,24 +534,45 @@ export default function LessonPageClient({
           )}
 
           {activeTab === "notes" && (
-            <div className="space-y-2 text-sm gaia-muted">
-              <div className="flex items-center justify-between gap-2">
-                <p className="gaia-strong text-base">Your Notes</p>
-                <p className="text-[10px] sm:text-xs gaia-muted">
-                  Saved automatically - stays even if you switch sessions.
-                </p>
-              </div>
-              <textarea
-                value={notes}
-                onChange={(e) => handleNotesChange(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-xs sm:text-sm gaia-strong outline-none focus:border-emerald-400/70 focus:ring-1 focus:ring-emerald-400/50 min-h-[200px]"
-                placeholder="Add your own notes, reflections, or code examples for this lesson..."
-              />
-            </div>
+            <>
+              {trackId === "programming" ? (
+                <div className="space-y-3 text-sm text-[var(--gaia-text-default)]">
+                  <div className="flex items-center justify-between">
+                    <p className="text-base font-semibold text-[var(--gaia-foreground)]">
+                      Code playground
+                    </p>
+                    <p className="text-[11px] sm:text-xs text-[var(--gaia-text-muted)]">
+                      Practice what you just studied.
+                    </p>
+                  </div>
+                  <CodePlayground
+                    initialCode={defaultCodeSnippet}
+                    language={codeLanguage}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-3 text-sm text-[var(--gaia-text-default)]">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-base font-semibold text-[var(--gaia-foreground)]">
+                      Your Notes
+                    </p>
+                    <p className="text-[11px] sm:text-xs text-[var(--gaia-text-muted)]">
+                      Saved automatically - stays even if you switch sessions.
+                    </p>
+                  </div>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => handleNotesChange(e.target.value)}
+                    className="mt-2 w-full rounded-xl border gaia-border bg-[var(--gaia-surface-soft)] px-3 py-3 text-sm text-[var(--gaia-foreground)] outline-none focus:border-info focus:ring-2 focus:ring-info/30 min-h-[220px]"
+                    placeholder="Add your own notes, reflections, or code examples for this lesson..."
+                  />
+                </div>
+              )}
+            </>
           )}
 
-          <footer className="pt-3 border-t gaia-border flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-[11px] sm:text-xs gaia-muted">
+          <footer className="pt-4 border-t gaia-border flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-[var(--gaia-text-muted)]">
               <span>Course {activeArc.label}</span>
               <span>-</span>
               <span>Lesson {activeLesson.code}</span>
@@ -543,7 +581,7 @@ export default function LessonPageClient({
               {prevLesson && (
                 <Link
                   href={`/apollo/academy/Paths/lesson/${prevLesson.id}`}
-                  className="inline-flex items-center justify-center rounded-full border gaia-border px-4 py-1.5 text-xs font-semibold gaia-ink-soft"
+                  className="inline-flex items-center justify-center rounded-full border gaia-border bg-[var(--gaia-surface-soft)] px-4 py-2 text-xs sm:text-sm font-semibold text-[var(--gaia-foreground)] hover:bg-[var(--gaia-surface)] shadow-sm"
                 >
                   {"<- Previous"}
                 </Link>
@@ -551,7 +589,7 @@ export default function LessonPageClient({
               {nextLesson && (
                 <Link
                   href={`/apollo/academy/Paths/lesson/${nextLesson.id}`}
-                  className="inline-flex items-center justify-center rounded-full border border-info bg-info text-contrast-text px-4 py-1.5 text-xs font-semibold shadow-sm hover:shadow-md transition"
+                  className="inline-flex items-center justify-center rounded-full border border-info bg-info text-contrast-text px-4 py-2 text-xs sm:text-sm font-semibold shadow-sm hover:shadow-md transition"
                 >
                   {"Next ->"}
                 </Link>
