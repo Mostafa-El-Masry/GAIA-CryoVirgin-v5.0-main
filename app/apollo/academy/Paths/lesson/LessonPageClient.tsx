@@ -482,6 +482,21 @@ export default function LessonPageClient({
                         </p>
                       )}
                   </div>
+
+                  {trackId === "programming" && (
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="gaia-strong text-base">Code playground</p>
+                        <p className="text-[10px] sm:text-xs gaia-muted">
+                          Practice what you just studied.
+                        </p>
+                      </div>
+                      <CodePlayground
+                        initialCode={defaultCodeSnippet}
+                        language={codeLanguage}
+                      />
+                    </div>
+                  )}
                 </>
               ) : (
                 <p className="text-xs sm:text-sm gaia-muted">
@@ -515,46 +530,6 @@ export default function LessonPageClient({
                 className="mt-2 w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-xs sm:text-sm gaia-strong outline-none focus:border-emerald-400/70 focus:ring-1 focus:ring-emerald-400/50 min-h-[200px]"
                 placeholder="Add your own notes, reflections, or code examples for this lesson..."
               />
-
-              {trackId === "programming" && (
-                <div className="space-y-3 pt-3 border-t gaia-border">
-                  <div className="flex items-center justify-between">
-                    <p className="gaia-strong text-base">Code playground</p>
-                    <p className="text-[10px] sm:text-xs gaia-muted">
-                      Preview and test quick snippets.
-                    </p>
-                  </div>
-                  <CodePlayground
-                    initialCode={defaultCodeSnippet}
-                    language={codeLanguage}
-                  />
-
-                  <div className="rounded-xl border gaia-border gaia-panel-soft p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="gaia-strong text-sm">Quick test</p>
-                      <span className="text-[10px] gaia-muted">
-                        Placeholder tests
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setTestMessage(
-                          "Basic test runner coming soon. For now, use this space to sanity-check your snippet."
-                        )
-                      }
-                      className="inline-flex items-center justify-center rounded-full border gaia-border px-3 py-1 text-[11px] sm:text-xs font-semibold gaia-ink-soft"
-                    >
-                      Run test
-                    </button>
-                    {testMessage && (
-                      <p className="text-[11px] sm:text-xs gaia-muted">
-                        {testMessage}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
