@@ -202,84 +202,145 @@ export default function WealthAwakeningClientPage() {
       : null;
 
   return (
-    <div className="relative isolate min-h-screen bg-gradient-to-b from-primary/10 via-base-100 to-base-100">
-      <div className="pointer-events-none absolute inset-0 opacity-70 [background-image:radial-gradient(circle_at_18%_20%,rgba(79,70,229,0.14),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(14,165,233,0.12),transparent_25%),radial-gradient(circle_at_50%_85%,rgba(34,197,94,0.12),transparent_30%)]" />
-      <main className="relative mx-auto max-w-6xl px-4 py-10">
-        <section className="overflow-hidden rounded-3xl border border-base-300/70 bg-base-100/95 shadow-2xl shadow-primary/10">
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-secondary/5" />
-            <header className="relative flex flex-col gap-4 px-5 py-6 md:flex-row md:items-center md:justify-between md:px-8 md:py-8">
-              <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/90">
-                  Wall Street Drive
-                </div>
-                <div className="space-y-2">
-                  <h1 className="text-3xl font-semibold text-base-content md:text-4xl">
-                    Wealth Awakening
-                  </h1>
-                  <p className="max-w-2xl text-sm text-base-content/70 md:text-base">
-                    A calm, driven Wealth co-pilot that tracks your accounts, certificates, and flows, and tells the story of how your money moves through your life.
-                  </p>
-                  {fxText && (
-                    <span className="inline-flex items-center gap-2 rounded-full border border-base-300 bg-base-200/60 px-3 py-1 text-[11px] font-medium text-base-content/70">
-                      <span className="h-2 w-2 rounded-full bg-primary/70" />
-                      {fxText}
+    <div className="min-h-screen bg-[#f4f6fb]">
+      <main className="mx-auto max-w-6xl lg:max-w-7xl px-4 py-8 space-y-6">
+        <section className="rounded-2xl bg-white border border-slate-200 shadow-md p-6">
+          {!overview ? (
+            <div className="text-sm text-slate-500">Loading your Wealth data…</div>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                      Wealth Awakening
+                    </p>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+                      {overview.primaryCurrency} Net Worth
+                    </h1>
+                    <p className="text-sm text-slate-500">
+                      Live snapshot of your buffers, certificates, and flows.
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold ${syncTone}`}
+                    >
+                      <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-current opacity-70" />
+                      {syncLabel}
                     </span>
-                  )}
+                    {fxText && (
+                      <span className="text-[11px] text-slate-500">{fxText}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-red-50 to-white h-64 flex items-center justify-center text-slate-400">
+                  {/* Placeholder chart-style area */}
+                  <div className="w-full h-full flex flex-col justify-between p-4">
+                    <div className="h-[1px] bg-slate-200" />
+                    <div className="h-[1px] bg-slate-200" />
+                    <div className="h-[1px] bg-slate-200" />
+                    <div className="h-20 rounded-lg bg-gradient-to-r from-red-200/60 via-red-100/40 to-red-200/60" />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-red-400" />
+                    Demo trend for layout preview.
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-slate-300" />
+                    Your numbers update as you log flows.
+                  </span>
                 </div>
               </div>
-              <div className="flex flex-col items-start gap-2 md:items-end">
-                <span
-                  className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold ${syncTone}`}
-                >
-                  <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-current opacity-70" />
-                  {syncLabel}
-                </span>
-                <span className="text-[11px] text-base-content/60">
-                  Snapshots update as you log flows; Supabase sync when available.
-                </span>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4 shadow-sm">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Converter
+                  </p>
+                  <h3 className="text-lg font-extrabold text-slate-900">
+                    Cash to buffer
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    Move your monthly surplus into your base currency quickly.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold text-slate-600">From</label>
+                  <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 flex items-center justify-between">
+                    <input
+                      className="bg-transparent outline-none text-sm font-semibold text-slate-900 w-full"
+                      defaultValue="1000"
+                    />
+                    <span className="text-sm font-semibold text-slate-700">
+                      {overview.primaryCurrency}
+                    </span>
+                  </div>
+
+                  <label className="text-xs font-semibold text-slate-600">To</label>
+                  <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 flex items-center justify-between">
+                    <input
+                      className="bg-transparent outline-none text-sm font-semibold text-slate-900 w-full"
+                      defaultValue="1000"
+                    />
+                    <span className="text-sm font-semibold text-slate-700">USD</span>
+                  </div>
+                </div>
+
+                <button className="w-full rounded-full bg-emerald-500 text-white font-semibold py-3 shadow-sm hover:bg-emerald-600 transition">
+                  Calculate contribution
+                </button>
+
+                <div className="text-xs text-slate-500">
+                  FX uses your Wealth settings. Adjust them in the Plans section.
+                </div>
               </div>
-            </header>
-          </div>
+            </div>
+          )}
         </section>
 
         {!overview ? (
-          <section className="mt-8 rounded-2xl border border-base-300 bg-base-100/85 p-6 text-sm text-base-content/70 shadow-lg shadow-primary/5">
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-md">
             Loading your Wealth map and snapshot...
           </section>
         ) : (
           <>
-            <section className="mt-8">
+            <section>
               <WealthSnapshot overview={overview} />
             </section>
 
-            <section className="mt-6 grid gap-4 md:grid-cols-2">
-              <article className="rounded-2xl border border-base-300 bg-base-100/90 p-4 shadow-md shadow-primary/5">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-base-content/70">
+            <section className="grid gap-4 md:grid-cols-2">
+              <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Current level
                 </h2>
-                <p className="mt-2 text-sm text-base-content/75">{levelHeadline}</p>
+                <p className="mt-2 text-sm text-slate-700">{levelHeadline}</p>
               </article>
-              <article className="rounded-2xl border border-base-300 bg-base-100/90 p-4 shadow-md shadow-primary/5">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-base-content/70">
+              <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Current plan
                 </h2>
-                <p className="mt-2 text-sm text-base-content/75">{planHeadline}</p>
+                <p className="mt-2 text-sm text-slate-700">{planHeadline}</p>
               </article>
             </section>
 
-            <div className="mt-4">
+            <div>
               <BlendsStrip snapshot={levelsSnapshot} />
             </div>
 
-            <section className="mt-6 grid gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+            <section className="grid gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
               <WealthMap overview={overview} />
               <QuickLinks />
             </section>
 
-              <section className="mt-6">
-                <WealthAlerts overview={overview} />
-              </section>
+            <section>
+              <WealthAlerts overview={overview} />
+            </section>
           </>
         )}
       </main>
