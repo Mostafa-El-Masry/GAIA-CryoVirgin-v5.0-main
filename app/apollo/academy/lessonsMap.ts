@@ -8,6 +8,7 @@ export type TrackId = "programming" | "accounting" | "self-repair";
   };
 
   export const programmingLessons: LessonMeta[] = [
+  { id: "prog-0-0", trackId: "programming", code: "0.0", title: "A Brief History of Programming" },
   { id: "prog-0-1", trackId: "programming", code: "0.1", title: "Computer Basics" },
   { id: "prog-0-2", trackId: "programming", code: "0.2", title: "How Does the Web Work?" },
   { id: "prog-0-3", trackId: "programming", code: "0.3", title: "Installation Overview" },

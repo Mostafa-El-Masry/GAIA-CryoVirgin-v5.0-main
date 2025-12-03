@@ -2,12 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { readJSON, writeJSON } from "@/lib/user-storage";
+import {
+  readJSON,
+  writeJSON,
+  removeItem,
+  onUserStorageReady,
+  subscribe as subscribeStorage,
+} from "@/lib/user-storage";
 import { useAcademyProgress } from "../../useAcademyProgress";
 import type { TrackId } from "../../lessonsMap";
 import type { ArcDefinition, PathDefinition } from "../types";
 import { getLessonContent } from "./lessonContent";
 import CodePlayground from "../../components/CodePlayground";
+import { LessonVideoBlock } from "../../components/LessonVideoBlock";
 
 type LessonPageClientProps = {
   trackId: TrackId;
@@ -47,6 +54,22 @@ function formatProgress(completed: number, total: number) {
   return `${Math.round((completed / total) * 100)}%`;
 }
 
+function getYoutubeId(url?: string): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes("youtube.com")) {
+      return parsed.searchParams.get("v");
+    }
+    if (parsed.hostname === "youtu.be") {
+      return parsed.pathname.replace("/", "") || null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export default function LessonPageClient({
   trackId,
   path,
@@ -58,6 +81,7 @@ export default function LessonPageClient({
 
   const [notes, setNotes] = useState<string>("");
   const notesKey = `gaia.academy.notes.${trackId}.${lessonId}`;
+  const quizKey = `gaia.academy.quiz.${trackId}.${lessonId}`;
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
@@ -67,15 +91,45 @@ export default function LessonPageClient({
   }, [markStudyVisit, trackId]);
 
   useEffect(() => {
-    const stored = readJSON<string | null>(notesKey, null);
-    if (stored !== null) {
-      setNotes(stored);
-    } else {
-      setNotes("");
-    }
-    setQuizAnswers({});
-    setQuizSubmitted(false);
-  }, [notesKey]);
+    const loadNotes = () => {
+      const stored = readJSON<string | null>(notesKey, null);
+      setNotes(stored ?? "");
+    };
+    const loadQuiz = () => {
+      const storedQuiz = readJSON<
+        | {
+            answers: Record<string, string>;
+            submitted: boolean;
+            allCorrect: boolean;
+          }
+        | null
+      >(quizKey, null);
+      if (storedQuiz?.allCorrect && storedQuiz.answers) {
+        setQuizAnswers(storedQuiz.answers);
+        setQuizSubmitted(true);
+      } else {
+        setQuizAnswers({});
+        setQuizSubmitted(false);
+      }
+    };
+
+    loadNotes();
+    loadQuiz();
+
+    const offReady = onUserStorageReady(() => {
+      loadNotes();
+      loadQuiz();
+    });
+    const offStorage = subscribeStorage(({ key }) => {
+      if (key === notesKey) loadNotes();
+      if (key === quizKey) loadQuiz();
+    });
+
+    return () => {
+      offReady();
+      offStorage();
+    };
+  }, [notesKey, quizKey]);
 
   const handleNotesChange = (value: string) => {
     setNotes(value);
@@ -92,6 +146,30 @@ export default function LessonPageClient({
     () => getLessonContent(lessonId, trackId),
     [lessonId, trackId]
   );
+  const videoId = useMemo(
+    () => getYoutubeId(lessonContent.study.videoUrl),
+    [lessonContent.study.videoUrl]
+  );
+
+  const allCorrectNow = useMemo(() => {
+    if (!lessonContent.quiz) return false;
+    return lessonContent.quiz.questions.every(
+      (q) => quizAnswers[q.id] === q.correctOptionId
+    );
+  }, [lessonContent.quiz, quizAnswers]);
+
+  useEffect(() => {
+    if (!lessonContent.quiz) return;
+    if (quizSubmitted && allCorrectNow) {
+      writeJSON(quizKey, {
+        answers: quizAnswers,
+        submitted: true,
+        allCorrect: true,
+      });
+    } else {
+      removeItem(quizKey);
+    }
+  }, [quizSubmitted, allCorrectNow, quizAnswers, quizKey, lessonContent.quiz]);
 
   const codeLanguage: "html" | "css" | "js" = useMemo(() => {
     if (trackId !== "programming") return "html";
@@ -165,12 +243,7 @@ export default function LessonPageClient({
   }
 
   const activeCompleted = isLessonCompleted(trackId, lessonId);
-  const allCorrect =
-    quizSubmitted &&
-    !!lessonContent.quiz &&
-    lessonContent.quiz.questions.every(
-      (q) => quizAnswers[q.id] === q.correctOptionId
-    );
+  const allCorrect = quizSubmitted && allCorrectNow;
 
   const toggleArc = (arcId: string) => {
     setOpenArcIds((prev) => {
@@ -345,16 +418,23 @@ export default function LessonPageClient({
         </aside>
 
         <section className="rounded-3xl border gaia-border bg-[var(--gaia-surface)] p-5 sm:p-7 space-y-5 shadow-md">
-          <div className="rounded-2xl border gaia-border bg-[var(--gaia-surface-soft)] aspect-video overflow-hidden relative flex items-center justify-center text-center">
-            <div className="flex flex-col items-center gap-2 text-[var(--gaia-text-muted)]">
-              <div className="h-14 w-14 rounded-full border gaia-border bg-[var(--gaia-surface)] shadow-sm flex items-center justify-center text-sm font-semibold text-[var(--gaia-foreground)]">
-                Play
+          {videoId ? (
+            <LessonVideoBlock
+              title={lessonContent.study.title}
+              youtubeId={videoId}
+            />
+          ) : (
+            <div className="rounded-2xl border gaia-border bg-[var(--gaia-surface-soft)] aspect-video overflow-hidden relative flex items-center justify-center text-center">
+              <div className="flex flex-col items-center gap-2 text-[var(--gaia-text-muted)]">
+                <div className="h-14 w-14 rounded-full border gaia-border bg-[var(--gaia-surface)] shadow-sm flex items-center justify-center text-sm font-semibold text-[var(--gaia-foreground)]">
+                  Play
+                </div>
+                <p className="text-sm text-[var(--gaia-text-muted)]">
+                  Lesson video placeholder
+                </p>
               </div>
-              <p className="text-sm text-[var(--gaia-text-muted)]">
-                Lesson video placeholder
-              </p>
             </div>
-          </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-2 rounded-full border gaia-border bg-[var(--gaia-surface-soft)] p-1 text-sm font-semibold">
             {tabs.map((tab) => {

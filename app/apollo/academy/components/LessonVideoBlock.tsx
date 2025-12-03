@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -17,7 +16,7 @@ export const LessonVideoBlock: React.FC<LessonVideoBlockProps> = ({
   if (!youtubeId) return null;
 
   const watchUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
-  const embedUrl = `https://www.youtube.com/embed/${youtubeId}`;
+  const embedUrl = `https://www.youtube-nocookie.com/embed/${youtubeId}`;
 
   return (
     <section className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-3 sm:p-4 space-y-3">
@@ -31,7 +30,8 @@ export const LessonVideoBlock: React.FC<LessonVideoBlockProps> = ({
           </h3>
           {durationLabel && (
             <p className="text-[11px] sm:text-xs gaia-muted">
-              Approx. duration: <span className="font-semibold">{durationLabel}</span>
+              Approx. duration:{" "}
+              <span className="font-semibold">{durationLabel}</span>
             </p>
           )}
         </div>
@@ -50,7 +50,8 @@ export const LessonVideoBlock: React.FC<LessonVideoBlockProps> = ({
           src={embedUrl}
           title={title}
           className="h-full w-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
         />

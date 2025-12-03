@@ -7,14 +7,36 @@ import {
 
 export function getFoundationsStudy(lessonCode: string): StudyDescription | null {
   switch (lessonCode) {
+    case "0.0":
+      return {
+        title: "A Short History of Programming",
+        videoUrl: "https://www.youtube.com/watch?v=OwS9aTE2Go4",
+        paragraphs: [
+          "Before we write any code, zoom out and see where programming came from. In the 1800s, Ada Lovelace wrote the first published algorithm for Babbage’s Analytical Engine — showing a machine could follow precise instructions.",
+          "Early computers used punched cards (inspired by the Jacquard loom) to feed instructions. Those cards led to low-level assembly languages that talked almost directly to hardware.",
+          "High-level languages arrived to make humans more productive: FORTRAN and COBOL in the 1950s for math and business, then C in the 1970s, which still shapes modern languages like C++, Go, and Rust.",
+          "The personal-computer era (1970s-80s) and the internet (1990s) exploded the need for accessible languages. HTML, CSS, and JavaScript emerged so people could publish and interact on the web.",
+          "Open-source communities (Linux, Python, PHP, Ruby, JavaScript ecosystems) made it normal to share code freely and improve it together. Modern package managers like npm and bundlers build on this culture.",
+          "Read The Odin Project Foundations \"History of the Web\" to see how the internet’s growth pulled programming forward. It uses simple language and free references.",
+          "Skim Codecademy’s free blog article \"A Brief History of Programming Languages\" (or similar free history pieces). It retells the same story with short, approachable examples.",
+          "Optional extra: browse freeCodeCamp’s timeline-style articles on computing history to hear the same milestones in another voice. Multiple sources help the narrative stick.",
+          "Keep one idea: programming is about giving clear instructions. Over time, languages improved so humans could express those instructions more easily — the principle stays the same.",
+        ],
+      };
     case "0.1":
       return {
-        title: "Computer Basics: Files, Folders, and Comfort",
+        title: "What Is Programming? Computer Basics, Files, and Comfort",
         videoUrl: "https://www.youtube.com/watch?v=O5nskjZ_GoI",
         paragraphs: [
-          "Before touching code, get comfortable with the basics: files, folders, paths, and how to navigate them. Most errors early on come from being in the wrong folder or not knowing where a file lives.",
-          "Practice seeing your machine as a tree: a root (C:\\ or /), then folders (like /Users/sasa or C:\\Users\\Sasa), then project folders (like gaia), then files inside.",
-          "Learn simple moves: create a folder, rename it, copy a file path, unzip a download, and delete safely. This confidence removes a lot of friction later.",
+          "Programming is giving clear, step-by-step instructions to a computer so it can do useful work. Computers are fast but literal: if your steps are fuzzy, they fail; if your steps are clear, they repeat them perfectly.",
+          "Before any code, feel calm with your machine: know where files live, how to create and rename folders, and how to avoid losing work because you do not know the path.",
+          "Imagine teaching someone to make tea. You break the goal into tiny steps: fill kettle, boil water, add a tea bag, wait, then pour. Programming is the same: a vague idea becomes a list of exact moves the computer can follow.",
+          "See your file system like a tree: drive or home at the top, a workspace folder inside it (for example, gaia), then one folder per project. Inside each project live your code files. This mental map prevents getting lost.",
+          "Practice the simple moves now: create a folder, rename it, move it, delete it safely, and copy its path. Keep all GAIA projects in one workspace so every future command starts from a known place.",
+          "Read The Odin Project Foundations intro on \"What is Programming?\" and \"How Does the Web Work?\". They explain these ideas slowly with plain language and pictures.",
+          "Skim Codecademy free Code Foundations \"What Is Programming?\" section. It repeats the same ideas with short examples and lets you hear the concepts in another voice.",
+          "For another free voice, read a short \"How Computers Work\" primer on freeCodeCamp or Khan Academy. Hearing the same core ideas from multiple places makes them stick.",
+          "The goal is comfort: you can explain what programming is, describe your folder map out loud, and feel ready to take the next steps instead of only using other people's apps.",
         ],
       };
     case "0.2":
@@ -22,9 +44,13 @@ export function getFoundationsStudy(lessonCode: string): StudyDescription | null
         title: "How Does the Web Work? (First look)",
         videoUrl: "https://www.youtube.com/watch?v=AEaKrq3SpW8",
         paragraphs: [
-          "The web is a conversation. Your browser (client) sends a request to a server. The server responds with HTML, CSS, JS, or data. The browser renders the response.",
-          "Every GAIA surface you build will rely on this loop: request, response, render. Understanding this at a high level makes later topics less mysterious.",
-          "You do not need to memorize protocols today. You just need to see the shape of the flow: client → request → server → response → browser renders.",
+          "The web is a conversation. Your browser (client) sends a request to a server. The server responds with HTML, CSS, JS, or data. The browser renders what comes back.",
+          "Every GAIA surface you build uses this loop: client request, server response, browser renders. Seeing this big picture now makes later topics feel less mysterious.",
+          "Read The Odin Project Foundations article \"How Does the Web Work?\". It explains requests, responses, and files with calm drawings and short text.",
+          "Open Codecademy free \"Intro to Web Development\" lesson on how websites work. It repeats the same ideas and shows how HTML, CSS, and JS arrive together.",
+          "Scan the MDN Web Docs page \"How the web works\". It introduces HTTP requests, DNS, and responses in beginner-friendly language without forcing you to memorize jargon.",
+          "You do not need to memorize protocols today. You just need the shape: your browser sends a request, a server answers, and the browser paints the result for you.",
+          "Practice by describing one real example: when you visit /apollo, your browser requests the page, the server responds with HTML plus links to CSS and JS, and the browser uses them to build what you see.",
         ],
       };
     case "0.3":
@@ -32,9 +58,13 @@ export function getFoundationsStudy(lessonCode: string): StudyDescription | null
         title: "Installation Overview",
         videoUrl: "https://www.youtube.com/watch?v=fBNz5xF-Kx4",
         paragraphs: [
-          "You will install a few core tools: a modern browser (Chrome/Firefox), Node.js (runtime + npm), Git (version control), and VS Code (editor).",
-          "Keep everything organized in a single workspace folder (for example C:\\gaia or ~/gaia). Your projects and repos will live inside it.",
-          "This lesson is an overview of what you will install and why, so the actual install steps feel calmer.",
+          "You need a small toolkit: a modern browser (Chrome or Firefox), Node.js (runtime plus npm), Git (version control), and VS Code (editor). These four pieces unlock every lesson that follows.",
+          "Keep everything organized in one workspace folder (for example C:\\\\gaia or ~/gaia). All projects live there, which keeps commands and paths predictable.",
+          "Read The Odin Project Foundations \"Installation Overview\" to see screenshots and why each tool matters. It walks through the same setup for beginners.",
+          "Check Codecademy free setup guides (for example \"Install Node\" and \"Set up VS Code\"). They show the same installs in short, calm steps.",
+          "Use the official sites when downloading: nodejs.org for Node LTS, git-scm.com for Git, code.visualstudio.com for VS Code. Avoid random mirrors.",
+          "Plan a quick verify step after each install: node -v, npm -v, git --version, and opening VS Code with code . from your workspace folder.",
+          "If an installer fails, retry the download, run as administrator, or search the official docs first. Small, steady steps beat rushing.",
         ],
       };
     case "0.4":
@@ -131,91 +161,356 @@ export function getFoundationsStudy(lessonCode: string): StudyDescription | null
 export function getFoundationsQuiz(lessonCode: string): QuizConfig | null {
   switch (lessonCode) {
 
-    case "0.1":
+    case "0.0":
       return {
-        id: "quiz-0-1",
-        title: "Check your understanding of computer basics",
+        id: "quiz-0-0",
+        title: "Check your understanding of programming history",
         questions: [
           {
             id: "q1",
             prompt:
-              "Which description best matches a folder on your computer?",
+              "Why is Ada Lovelace often called the first programmer?",
             options: [
               {
                 id: "q1-a",
-                label: "A single file that stores text.",
+                label: "She wrote one of the earliest algorithms for a mechanical computer (the Analytical Engine).",
               },
               {
                 id: "q1-b",
-                label: "A container that can hold other folders and files.",
+                label: "She invented modern laptops.",
               },
               {
                 id: "q1-c",
-                label: "A program that runs code.",
+                label: "She created the internet.",
               },
               {
                 id: "q1-d",
-                label: "A backup copy stored somewhere in the cloud.",
+                label: "She was the first person to use JavaScript.",
               },
             ],
-            correctOptionId: "q1-b",
+            correctOptionId: "q1-a",
             explanation:
-              "A folder (or directory) is a container that groups other folders and files so you can keep projects organised.",
+              "Lovelace described how to instruct Babbage’s Analytical Engine, showing machines could follow step-by-step algorithms.",
           },
           {
             id: "q2",
             prompt:
-              "Why is it helpful to think of your disk as a tree: root → folders → files?",
+              "Why were high-level languages like FORTRAN and COBOL created?",
             options: [
               {
                 id: "q2-a",
-                label: "Because it makes the computer run faster.",
+                label: "To make humans write instructions faster and more clearly than raw machine code or punched cards.",
               },
               {
                 id: "q2-b",
-                label:
-                  "Because it helps you not get lost and know exactly where each project lives.",
+                label: "To make computers heavier.",
               },
               {
                 id: "q2-c",
-                label: "Because you must always use the command line.",
+                label: "To eliminate the need for electricity.",
               },
               {
                 id: "q2-d",
-                label:
-                  "Because Windows will not let you create GAIA projects anywhere else.",
+                label: "To replace the web browser.",
               },
             ],
-            correctOptionId: "q2-b",
+            correctOptionId: "q2-a",
             explanation:
-              "Thinking in folders and paths is like having a map of your machine; you always know where your projects live.",
+              "High-level languages help humans express logic without micromanaging hardware details, boosting productivity.",
           },
           {
             id: "q3",
             prompt:
-              "Which of these is a safe habit when you are organising GAIA projects?",
+              "What is one key reason open-source communities matter in programming history?",
             options: [
               {
                 id: "q3-a",
-                label: "Saving everything directly on the Desktop with random names.",
+                label: "They make it normal to share code, learn from others, and improve tools together for free.",
               },
               {
                 id: "q3-b",
-                label:
-                  "Keeping GAIA projects in one workspace folder and naming folders clearly.",
+                label: "They prevent anyone from writing new code.",
               },
               {
                 id: "q3-c",
-                label: "Renaming system folders like \"Program Files\".",
+                label: "They only allow programming on weekends.",
               },
               {
                 id: "q3-d",
-                label: "Deleting folders you do not recognise in C:\\ to free space.",
+                label: "They eliminated the need for version control.",
+              },
+            ],
+            correctOptionId: "q3-a",
+            explanation:
+              "Open-source culture encourages collaboration and reuse, which accelerated modern languages, frameworks, and package ecosystems.",
+          },
+        ],
+      };
+
+    case "0.1":
+      return {
+        id: "quiz-0-1",
+        title: "Check your understanding of what programming is",
+        questions: [
+          {
+            id: "q1",
+            prompt:
+              "Which description best matches what programming actually is?",
+            options: [
+              {
+                id: "q1-a",
+                label: "Giving clear, step-by-step instructions to a computer so it can do useful work.",
+              },
+              {
+                id: "q1-b",
+                label: "Randomly clicking on apps until something works.",
+              },
+              {
+                id: "q1-c",
+                label: "Only drawing user interface designs.",
+              },
+              {
+                id: "q1-d",
+                label: "Buying more expensive hardware.",
+              },
+            ],
+            correctOptionId: "q1-a",
+            explanation:
+              "Programming is about precise instructions the computer can follow, not just using apps or hardware.",
+          },
+          {
+            id: "q2",
+            prompt:
+              "Why is the tea-making example useful for understanding programming?",
+            options: [
+              {
+                id: "q2-a",
+                label: "Tea and computers use the same technology.",
+              },
+              {
+                id: "q2-b",
+                label: "It shows you should always rush to finish tasks.",
+              },
+              {
+                id: "q2-c",
+                label: "It shows how a vague goal can be broken down into clear, ordered steps.",
+              },
+              {
+                id: "q2-d",
+                label: "It proves you must drink tea to be a programmer.",
+              },
+            ],
+            correctOptionId: "q2-c",
+            explanation:
+              "Just like making tea, programming turns a vague goal into a series of clear, ordered actions.",
+          },
+          {
+            id: "q3",
+            prompt:
+              "Why does this lesson spend time on files and folders before writing code?",
+            options: [
+              {
+                id: "q3-a",
+                label: "Because file icons are more important than code.",
+              },
+              {
+                id: "q3-b",
+                label: "Because feeling calm with where your projects live removes a lot of stress later.",
+              },
+              {
+                id: "q3-c",
+                label: "Because you will never actually write code.",
+              },
+              {
+                id: "q3-d",
+                label: "Because programming is only about renaming folders.",
               },
             ],
             correctOptionId: "q3-b",
             explanation:
-              "A dedicated workspace folder with clear names makes your projects easy to find and much harder to break.",
+              "If you always know where your projects live, you avoid a huge amount of confusion and anxiety later.",
+          },
+          {
+            id: "q4",
+            prompt:
+              "Which picture of your computer does the lesson suggest you keep in mind?",
+            options: [
+              {
+                id: "q4-a",
+                label: "A random pile of files scattered everywhere.",
+              },
+              {
+                id: "q4-b",
+                label: "A single folder that contains every file on the machine.",
+              },
+              {
+                id: "q4-c",
+                label: "Only the Desktop, because nothing else matters.",
+              },
+              {
+                id: "q4-d",
+                label: "A tree: drive or home folder → workspace → project folders → files.",
+              },
+            ],
+            correctOptionId: "q4-d",
+            explanation:
+              "Thinking of your machine as a tree helps you understand where projects and files fit in that structure.",
+          },
+          {
+            id: "q5",
+            prompt:
+              "What is the main benefit of keeping all GAIA projects in one workspace folder?",
+            options: [
+              {
+                id: "q5-a",
+                label: "It makes it easier to delete them by mistake.",
+              },
+              {
+                id: "q5-b",
+                label: "You always know where to find your projects when using the terminal or editor.",
+              },
+              {
+                id: "q5-c",
+                label: "It makes your computer run twice as fast.",
+              },
+              {
+                id: "q5-d",
+                label: "It allows you to install more games.",
+              },
+            ],
+            correctOptionId: "q5-b",
+            explanation:
+              "A single workspace folder gives you one mental location for all projects, which simplifies every command you run later.",
+          },
+          {
+            id: "q6",
+            prompt:
+              "How does the lesson suggest you respond when you feel confused at the beginning?",
+            options: [
+              {
+                id: "q6-a",
+                label: "Give up immediately and assume you cannot learn programming.",
+              },
+              {
+                id: "q6-b",
+                label: "Hide your confusion and keep pretending you understand.",
+              },
+              {
+                id: "q6-c",
+                label: "Accept some confusion, move in small steps, and write notes for your future self.",
+              },
+              {
+                id: "q6-d",
+                label: "Keep reinstalling tools again and again.",
+              },
+            ],
+            correctOptionId: "q6-c",
+            explanation:
+              "Confusion at the beginning is normal; the important part is moving gently and documenting what you learn.",
+          },
+          {
+            id: "q7",
+            prompt:
+              "Which action best matches the idea of "basic comfort" with your computer?",
+            options: [
+              {
+                id: "q7-a",
+                label: "Knowing how to create, rename, move, and delete folders without fear.",
+              },
+              {
+                id: "q7-b",
+                label: "Installing random programs without reading what they do.",
+              },
+              {
+                id: "q7-c",
+                label: "Only using search to find files, never organising them.",
+              },
+              {
+                id: "q7-d",
+                label: "Keeping all files on the Desktop with long names.",
+              },
+            ],
+            correctOptionId: "q7-a",
+            explanation:
+              "Basic comfort means you can perform the simple file operations calmly and on purpose.",
+          },
+          {
+            id: "q8",
+            prompt:
+              "What is the big shift this track wants to create for you?",
+            options: [
+              {
+                id: "q8-a",
+                label: "To make you afraid of touching your computer.",
+              },
+              {
+                id: "q8-b",
+                label: "To keep you only as a passive user of other people’s apps.",
+              },
+              {
+                id: "q8-c",
+                label: "To avoid using AI tools completely.",
+              },
+              {
+                id: "q8-d",
+                label: "To help you become someone who can design and guide the tools you use, not just click them.",
+              },
+            ],
+            correctOptionId: "q8-d",
+            explanation:
+              "The goal is to move you from passive user to someone who can shape tools with code and AI.",
+          },
+          {
+            id: "q9",
+            prompt:
+              "Why does the lesson talk specifically about GAIA when explaining programming?",
+            options: [
+              {
+                id: "q9-a",
+                label: "Because GAIA is the only possible project you can ever build.",
+              },
+              {
+                id: "q9-b",
+                label: "Because connecting concepts to a real, personal project makes the ideas much easier to remember.",
+              },
+              {
+                id: "q9-c",
+                label: "Because GAIA replaces all other programming languages.",
+              },
+              {
+                id: "q9-d",
+                label: "Because you should never build smaller practice projects.",
+              },
+            ],
+            correctOptionId: "q9-b",
+            explanation:
+              "Linking the theory to your real GAIA project makes the learning feel relevant and sticks better in your memory.",
+          },
+          {
+            id: "q10",
+            prompt:
+              "What does "from noob to hero" mean in the context of this lesson?",
+            options: [
+              {
+                id: "q10-a",
+                label: "Becoming a world-famous computer scientist overnight.",
+              },
+              {
+                id: "q10-b",
+                label: "Memorising every programming language before writing any code.",
+              },
+              {
+                id: "q10-c",
+                label: "Gaining enough skill to understand code, work with AI, and build small tools confidently.",
+              },
+              {
+                id: "q10-d",
+                label: "Never making mistakes again.",
+              },
+            ],
+            correctOptionId: "q10-c",
+            explanation:
+              "The goal is realistic confidence: understanding code and using it with AI to build the tools you need.",
           },
         ],
       };
@@ -227,80 +522,262 @@ export function getFoundationsQuiz(lessonCode: string): QuizConfig | null {
           {
             id: "q1",
             prompt:
-              "In the client–server model, your browser is the…",
+              "In the client–server model, what role does your browser usually play?",
             options: [
               {
                 id: "q1-a",
-                label: "Server that stores all the websites.",
+                label: "The server that stores all websites.",
               },
               {
                 id: "q1-b",
-                label: "Client that sends requests and shows responses.",
+                label: "The database that holds all user data.",
               },
               {
                 id: "q1-c",
-                label: "Database that stores user data.",
+                label: "The operating system itself.",
               },
               {
                 id: "q1-d",
-                label: "Router that sends Wi‑Fi to your phone.",
+                label: "The client that sends requests and displays responses.",
               },
             ],
-            correctOptionId: "q1-b",
+            correctOptionId: "q1-d",
             explanation:
-              "The browser is the client. It sends requests to servers and then renders the responses it receives.",
+              "Your browser is the client: it sends requests to servers and shows you the responses.",
           },
           {
             id: "q2",
-            prompt: "What is an HTTP response?",
+            prompt:
+              "What is the main job of a web server in this first mental model?",
             options: [
               {
                 id: "q2-a",
-                label: "A file stored on your Desktop.",
+                label: "To draw the user interface on your monitor.",
               },
               {
                 id: "q2-b",
-                label:
-                  "The data a server sends back after receiving your request.",
+                label: "To store code and data and send back responses when the client asks.",
               },
               {
                 id: "q2-c",
-                label: "The Wi‑Fi password.",
+                label: "To manage your local file system.",
               },
               {
                 id: "q2-d",
-                label: "The name of the website.",
+                label: "To decide which apps you are allowed to install.",
               },
             ],
             correctOptionId: "q2-b",
             explanation:
-              "HTTP is the protocol of the web. The server sends an HTTP response (HTML, CSS, JS, JSON, etc.) back to the client.",
+              "The server holds code and data and returns responses when a client (like your browser) sends a request.",
           },
           {
             id: "q3",
-            prompt: "Which pair is correct?",
+            prompt:
+              "When you type a URL like https://example.com into your browser, what is the simplest way to describe what happens?",
             options: [
               {
                 id: "q3-a",
-                label: "HTML = styling, CSS = structure and content.",
+                label: "Your computer sends a request to a server and waits for a response.",
               },
               {
                 id: "q3-b",
-                label:
-                  "HTML = structure and content, CSS = visual appearance and layout.",
+                label: "Your computer only opens a local file with that name.",
               },
               {
                 id: "q3-c",
-                label: "CSS = database, JS = images.",
+                label: "Your browser formats your hard drive.",
               },
               {
                 id: "q3-d",
-                label: "JS = your web address, HTML = router settings.",
+                label: "Your Wi‑Fi router deletes old websites.",
               },
             ],
-            correctOptionId: "q3-b",
+            correctOptionId: "q3-a",
             explanation:
-              "HTML defines the structure and content of the page, while CSS controls how it looks.",
+              "Typing a URL sends a request to a remote server, which returns a response that your browser renders.",
+          },
+          {
+            id: "q4",
+            prompt:
+              "In the GAIA project, how can you think about the frontend and backend?",
+            options: [
+              {
+                id: "q4-a",
+                label: "Frontend and backend are exactly the same thing.",
+              },
+              {
+                id: "q4-b",
+                label: "The frontend is what runs in the browser; the backend runs on a server and works with data.",
+              },
+              {
+                id: "q4-c",
+                label: "The frontend is only images; the backend is only videos.",
+              },
+              {
+                id: "q4-d",
+                label: "Frontend means your keyboard, backend means your mouse.",
+              },
+            ],
+            correctOptionId: "q4-b",
+            explanation:
+              "The frontend is your visible interface in the browser, the backend is the server side that handles logic and data.",
+          },
+          {
+            id: "q5",
+            prompt:
+              "Why does this lesson say you do NOT need to memorise all protocols right now?",
+            options: [
+              {
+                id: "q5-a",
+                label: "Because protocols are not used on the web anymore.",
+              },
+              {
+                id: "q5-b",
+                label: "Because details never matter in programming.",
+              },
+              {
+                id: "q5-c",
+                label: "Because only network engineers are allowed to learn them.",
+              },
+              {
+                id: "q5-d",
+                label: "Because the main goal now is to understand the simple flow: client → request → server → response.",
+              },
+            ],
+            correctOptionId: "q5-d",
+            explanation:
+              "At this stage, the key idea is the flow of requests and responses, not the low-level protocol details.",
+          },
+          {
+            id: "q6",
+            prompt:
+              "Which of these is a good mental picture of how GAIA talks to a database like Supabase?",
+            options: [
+              {
+                id: "q6-a",
+                label: "The browser directly edits your hard drive without any requests.",
+              },
+              {
+                id: "q6-b",
+                label: "The frontend sends a request to an API endpoint, which talks to the database and sends data back.",
+              },
+              {
+                id: "q6-c",
+                label: "The database lives inside the browser cache.",
+              },
+              {
+                id: "q6-d",
+                label: "There is no communication; they are completely separate.",
+              },
+            ],
+            correctOptionId: "q6-b",
+            explanation:
+              "The frontend talks to an API on the backend, which then reads or writes data in the database and returns a response.",
+          },
+          {
+            id: "q7",
+            prompt:
+              "What does it mean when we say the browser \"renders\" a response?",
+            options: [
+              {
+                id: "q7-a",
+                label: "It deletes the response and shows nothing.",
+              },
+              {
+                id: "q7-b",
+                label: "It stores the response in a log file only.",
+              },
+              {
+                id: "q7-c",
+                label: "It turns the HTML, CSS, and JavaScript into the page you see and can interact with.",
+              },
+              {
+                id: "q7-d",
+                label: "It automatically prints the page on paper.",
+              },
+            ],
+            correctOptionId: "q7-c",
+            explanation:
+              "Rendering is the browser’s process of taking the response and making it into the page you see.",
+          },
+          {
+            id: "q8",
+            prompt:
+              "Why is it useful for you, as a beginner, to have even a rough client–server mental model?",
+            options: [
+              {
+                id: "q8-a",
+                label: "So you can fix every network problem on the planet.",
+              },
+              {
+                id: "q8-b",
+                label: "So you can feel superior to non-programmers.",
+              },
+              {
+                id: "q8-c",
+                label: "So you never have to think about the web again.",
+              },
+              {
+                id: "q8-d",
+                label: "So later, when code says fetch or API, you have a place in your mind to put those ideas.",
+              },
+            ],
+            correctOptionId: "q8-d",
+            explanation:
+              "A simple mental model gives future concepts like fetch, APIs, and endpoints somewhere to attach in your mind.",
+          },
+          {
+            id: "q9",
+            prompt:
+              "Which of these situations best shows a healthy beginner attitude toward \"how the web works\"?",
+            options: [
+              {
+                id: "q9-a",
+                label: "Refusing to code until you memorise every protocol and port number.",
+              },
+              {
+                id: "q9-b",
+                label: "Ignoring the web completely and only writing offline programs.",
+              },
+              {
+                id: "q9-c",
+                label: "Accepting a high-level mental model now and trusting that details will come when you need them.",
+              },
+              {
+                id: "q9-d",
+                label: "Only learning through random error messages.",
+              },
+            ],
+            correctOptionId: "q9-c",
+            explanation:
+              "You do not need every detail now; a clear high-level model is enough to start building.",
+          },
+          {
+            id: "q10",
+            prompt:
+              "How does this lesson connect to your future GAIA work?",
+            options: [
+              {
+                id: "q10-a",
+                label: "It shows that GAIA will never need a backend.",
+              },
+              {
+                id: "q10-b",
+                label: "It shows that GAIA is only a server and never runs in a browser.",
+              },
+              {
+                id: "q10-c",
+                label: "It reminds you that every GAIA page in the browser is the result of requests, responses, and data flowing behind the scenes.",
+              },
+              {
+                id: "q10-d",
+                label: "It proves that GAIA must be rewritten in a different language.",
+              },
+            ],
+            correctOptionId: "q10-c",
+            explanation:
+              "Understanding the basic flow of requests and responses helps you reason about every GAIA screen you build.",
           },
         ],
       };
@@ -312,83 +789,262 @@ export function getFoundationsQuiz(lessonCode: string): QuizConfig | null {
           {
             id: "q1",
             prompt:
-              "Which tools are core to install before starting GAIA programming practice?",
+              "Which tools does this lesson describe as core parts of your developer toolkit for GAIA?",
             options: [
               {
                 id: "q1-a",
-                label: "Only a design tool like Photoshop.",
+                label: "A modern browser, Node.js + npm, Git, and VS Code.",
               },
               {
                 id: "q1-b",
-                label:
-                  "A modern browser, Node.js, Git, and a code editor like VS Code.",
+                label: "Only a photo editing app.",
               },
               {
                 id: "q1-c",
-                label: "Only Excel and PowerPoint.",
+                label: "Only a spreadsheet application.",
               },
               {
                 id: "q1-d",
-                label: "No tools at all, just Notepad.",
+                label: "A random set of games.",
               },
             ],
-            correctOptionId: "q1-b",
+            correctOptionId: "q1-a",
             explanation:
-              "You will mainly use a browser, Node.js + npm, Git, and VS Code to build and run GAIA projects.",
+              "The core stack here is: browser, Node.js + npm, Git, and VS Code as your main editor.",
           },
           {
             id: "q2",
             prompt:
-              "Why do we keep all GAIA projects inside one workspace folder (like C:\\Users\\Sasa\\gaia or ~/gaia)?",
+              "What is the purpose of Node.js + npm in your GAIA setup?",
             options: [
               {
                 id: "q2-a",
-                label: "So we can delete everything quickly.",
+                label: "They run the operating system.",
               },
               {
                 id: "q2-b",
-                label:
-                  "So all repos and projects live in one predictable, organised place.",
+                label: "They let you run JavaScript outside the browser and manage project dependencies.",
               },
               {
                 id: "q2-c",
-                label: "Because VS Code only works inside that folder.",
+                label: "They are only used to edit images.",
               },
               {
                 id: "q2-d",
-                label: "Because the internet cannot see any other folder.",
+                label: "They replace your browser entirely.",
               },
             ],
             correctOptionId: "q2-b",
             explanation:
-              "A single workspace folder keeps your projects tidy and makes paths much easier to reason about.",
+              "Node.js runs JavaScript on your machine and npm manages the packages your projects need.",
           },
           {
             id: "q3",
             prompt:
-              "If an installation feels overwhelming, what attitude does this lesson recommend?",
+              "Why does the lesson recommend one main workspace folder for all GAIA projects (for example, gaia)?",
             options: [
               {
                 id: "q3-a",
-                label: "Stop completely and never come back.",
+                label: "So you can easily forget where projects are.",
               },
               {
                 id: "q3-b",
-                label: "Do everything in one exhausting night no matter what.",
+                label: "So every project is in a different random location.",
               },
               {
                 id: "q3-c",
-                label:
-                  "Take it step by step, accept a bit of confusion, and write notes for future‑you.",
+                label: "So commands and editor sessions always start from a predictable place.",
               },
               {
                 id: "q3-d",
-                label: "Ask someone else to do everything and never learn it.",
+                label: "So you can mix system files and project files together.",
               },
             ],
             correctOptionId: "q3-c",
             explanation:
-              "You are allowed to move slowly. Calm, honest notes and small steps are better than one big heroic push.",
+              "A single workspace folder makes it much easier to run commands and open projects without getting lost.",
+          },
+          {
+            id: "q4",
+            prompt:
+              "What is the main job of Git in this toolkit?",
+            options: [
+              {
+                id: "q4-a",
+                label: "Tracking your changes so you can make commits and roll back if needed.",
+              },
+              {
+                id: "q4-b",
+                label: "Controlling your internet connection.",
+              },
+              {
+                id: "q4-c",
+                label: "Replacing your file explorer.",
+              },
+              {
+                id: "q4-d",
+                label: "Automatically writing all your code.",
+              },
+            ],
+            correctOptionId: "q4-a",
+            explanation:
+              "Git is version control: it tracks changes and lets you create safe checkpoints for your projects.",
+          },
+          {
+            id: "q5",
+            prompt:
+              "Why does the lesson say this is an \"overview\" of installation rather than a full tutorial?",
+            options: [
+              {
+                id: "q5-a",
+                label: "Because you are not expected to install any tools at all.",
+              },
+              {
+                id: "q5-b",
+                label: "Because the goal is to give you a mental map first so detailed steps feel calmer later.",
+              },
+              {
+                id: "q5-c",
+                label: "Because installation is not important for programmers.",
+              },
+              {
+                id: "q5-d",
+                label: "Because only experts are allowed to install tools.",
+              },
+            ],
+            correctOptionId: "q5-b",
+            explanation:
+              "The lesson focuses on the big picture so you know why each tool matters before following step-by-step guides.",
+          },
+          {
+            id: "q6",
+            prompt:
+              "How does VS Code fit into this toolkit?",
+            options: [
+              {
+                id: "q6-a",
+                label: "It is only used to browse the internet.",
+              },
+              {
+                id: "q6-b",
+                label: "It replaces your operating system.",
+              },
+              {
+                id: "q6-c",
+                label: "It is only for designing images and logos.",
+              },
+              {
+                id: "q6-d",
+                label: "It is the main code editor where you open your GAIA projects and write code.",
+              },
+            ],
+            correctOptionId: "q6-d",
+            explanation:
+              "VS Code is your main development environment where you view and edit project files.",
+          },
+          {
+            id: "q7",
+            prompt:
+              "What attitude does the lesson recommend if installation steps feel overwhelming?",
+            options: [
+              {
+                id: "q7-a",
+                label: "Rush through everything in one night, no matter how confused you feel.",
+              },
+              {
+                id: "q7-b",
+                label: "Give up completely and never come back.",
+              },
+              {
+                id: "q7-c",
+                label: "Slow down, take breaks, and do one small piece at a time while taking notes.",
+              },
+              {
+                id: "q7-d",
+                label: "Uninstall all tools whenever you see an error.",
+              },
+            ],
+            correctOptionId: "q7-c",
+            explanation:
+              "The lesson encourages a gentle pace and small steps, not panic or all-or-nothing thinking.",
+          },
+          {
+            id: "q8",
+            prompt:
+              "Why is it helpful to know roughly what each tool does before you follow a specific installation guide?",
+            options: [
+              {
+                id: "q8-a",
+                label: "So you can impress people with tool names.",
+              },
+              {
+                id: "q8-b",
+                label: "So you can skip all installation steps forever.",
+              },
+              {
+                id: "q8-c",
+                label: "So every click in the installer feels connected to a purpose in your GAIA work.",
+              },
+              {
+                id: "q8-d",
+                label: "So you can safely ignore error messages.",
+              },
+            ],
+            correctOptionId: "q8-c",
+            explanation:
+              "When you know why a tool matters, the detailed installation steps feel less random and more meaningful.",
+          },
+          {
+            id: "q9",
+            prompt:
+              "Which of these best describes the toolkit after you finish this installation overview?",
+            options: [
+              {
+                id: "q9-a",
+                label: "A complete, unchangeable setup that you must never touch again.",
+              },
+              {
+                id: "q9-b",
+                label: "A starting point that you can refine later as you learn more.",
+              },
+              {
+                id: "q9-c",
+                label: "A temporary trial that will be deleted automatically.",
+              },
+              {
+                id: "q9-d",
+                label: "Only useful for other people, not for GAIA.",
+              },
+            ],
+            correctOptionId: "q9-b",
+            explanation:
+              "This toolkit is a foundation you can improve over time as your needs and skills change.",
+          },
+          {
+            id: "q10",
+            prompt:
+              "How does this lesson support your goal of becoming comfortable with GAIA as a development project?",
+            options: [
+              {
+                id: "q10-a",
+                label: "By giving you a clear picture of the tools and folders involved before you start heavy coding.",
+              },
+              {
+                id: "q10-b",
+                label: "By avoiding any mention of tools or setup.",
+              },
+              {
+                id: "q10-c",
+                label: "By focusing only on theory and never on your machine.",
+              },
+              {
+                id: "q10-d",
+                label: "By telling you that setup is someone else’s job.",
+              },
+            ],
+            correctOptionId: "q10-a",
+            explanation:
+              "A clear overview of tools and folder structure makes GAIA feel like a real, manageable project on your own machine.",
           },
         ],
       };
@@ -698,6 +1354,17 @@ export function getFoundationsQuiz(lessonCode: string): QuizConfig | null {
 
 export function getFoundationsPractice(lessonCode: string): PracticePrompt | null {
   switch (lessonCode) {
+    case "0.0":
+      return {
+        title: "Write your quick programming history timeline",
+        description:
+          "Capture the key moments so you remember why languages evolved and how that shapes what you will learn next.",
+        instructions: [
+          "In 8-12 lines, write a simple timeline from Ada Lovelace and punched cards to high-level languages (FORTRAN/COBOL), C, the web (HTML/CSS/JS), and open source/package managers.",
+          "Mention one insight from the YouTube video (Early Programming) and one from a free article (for example The Odin Project’s history piece or a Codecademy/freeCodeCamp history blog).",
+          "Add a sentence on why this matters to you: how does knowing the history reduce intimidation or help you explain programming to someone else?",
+        ],
+      };
     case "0.1":
       return {
         title: "Map your folders and paths",
@@ -844,6 +1511,7 @@ export function validateFoundationsPractice(
   content: string
 ): PracticeCheckResult | null {
   const lengthChecked = new Set([
+    "0.0",
     "0.1",
     "0.2",
     "0.3",

@@ -1,22 +1,19 @@
 "use client";
 
-type LessonNavItem = {
+export type LessonNavItem = {
   id: string;
   code: string;
   title: string;
   isCompleted?: boolean;
 };
 
-type LessonSidebarProps = {
+export type LessonSidebarProps = {
   courseTitle: string;
   pathTitle: string;
   completionLabel?: string;
   lessons: LessonNavItem[];
   activeLessonId: string;
 };
-
-export type { LessonNavItem, LessonSidebarProps };
-
 export function LessonSidebar({
   courseTitle,
   pathTitle,
