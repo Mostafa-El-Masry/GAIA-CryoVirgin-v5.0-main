@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import type { TrackId } from "../lessonsMap";
+import { lessonsByTrack } from "../lessonsMap";
 import { useAcademyProgress } from "../useAcademyProgress";
 
 const DAY_HEADERS: { label: string; jsDay: number }[] = [
@@ -194,16 +195,10 @@ export default function AcademyMonthlyCalendarPage() {
   });
 
   // Allocate completed credits from study history to the earliest pending study days.
-  const historyCountByTrack: Record<TrackId, number> = {
-    programming:
-      state.byTrack.programming?.studyHistory?.filter((d) => d <= isoToday)
-        .length ?? 0,
-    accounting:
-      state.byTrack.accounting?.studyHistory?.filter((d) => d <= isoToday)
-        .length ?? 0,
-    "self-repair":
-      state.byTrack["self-repair"]?.studyHistory?.filter((d) => d <= isoToday)
-        .length ?? 0,
+  const completedCountByTrack: Record<TrackId, number> = {
+    programming: state.byTrack.programming?.completedLessonIds?.length ?? 0,
+    accounting: state.byTrack.accounting?.completedLessonIds?.length ?? 0,
+    "self-repair": state.byTrack["self-repair"]?.completedLessonIds?.length ?? 0,
   };
 
   const studyDaysByTrack: Record<TrackId, string[]> = {
@@ -224,9 +219,21 @@ export default function AcademyMonthlyCalendarPage() {
     "self-repair": new Set(),
   };
 
+  const lessonLabelByIso: Record<string, string> = {};
+
   (Object.keys(studyDaysByTrack) as TrackId[]).forEach((trackId) => {
     const ordered = studyDaysByTrack[trackId].slice().sort();
-    let credits = historyCountByTrack[trackId] ?? 0;
+    let credits = completedCountByTrack[trackId] ?? 0;
+    const lessons = lessonsByTrack[trackId] ?? [];
+
+    // Attach lesson labels to calendar days based on order
+    ordered.forEach((iso, idx) => {
+      const lesson = lessons[idx];
+      if (lesson?.code) {
+        lessonLabelByIso[iso] = `Lesson ${lesson.code}`;
+      }
+    });
+
     for (const iso of ordered) {
       if (credits <= 0) break;
       completedByTrack[trackId].add(iso);
@@ -355,6 +362,11 @@ export default function AcademyMonthlyCalendarPage() {
                       {study && (
                         <p className="text-[10px] font-semibold text-slate-800">
                           {trackLabel(cell.schedule.trackId)}
+                        </p>
+                      )}
+                      {study && lessonLabelByIso[cell.iso] && (
+                        <p className="text-[10px] font-semibold text-slate-700">
+                          {lessonLabelByIso[cell.iso]}
                         </p>
                       )}
                       {isDone && (

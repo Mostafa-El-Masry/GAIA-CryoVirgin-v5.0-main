@@ -11,6 +11,10 @@ import {
   subscribe as subscribeStorage,
   setItem,
 } from "@/lib/user-storage";
+import {
+  getSession as getSupabaseSession,
+  isSupabaseClientConfigured,
+} from "@/lib/supabase-client";
 import { useAcademyProgress } from "../../useAcademyProgress";
 import type { TrackId } from "../../lessonsMap";
 import type { ArcDefinition, PathDefinition } from "../types";
@@ -248,6 +252,41 @@ export default function LessonPageClient({
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
   const currentUtterance = useRef<SpeechSynthesisUtterance | null>(null);
+  const postLessonRun = useCallback(
+    async (
+      payload: Partial<{
+        quizAnswers: Record<string, string>;
+        quizCorrect: boolean;
+        quizSubmittedAt: string;
+        codeLanguage: string;
+        codeSubmitted: string;
+        codeResult: unknown;
+        completedAt: string;
+      }>
+    ) => {
+      try {
+        if (!isSupabaseClientConfigured) return;
+        const session = await getSupabaseSession();
+        const token = session?.access_token ?? null;
+        if (!token) return;
+        await fetch("/api/academy/lesson-run", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            lessonId,
+            trackId,
+            ...payload,
+          }),
+        });
+      } catch (error) {
+        console.warn("Failed to persist lesson run", error);
+      }
+    },
+    [lessonId, trackId]
+  );
 
   useEffect(() => {
     const applyStoredVoice = () => {
@@ -638,6 +677,15 @@ export default function LessonPageClient({
       (q) => quizAnswers[q.id] === q.correctOptionId
     );
   }, [quizContent, quizAnswers]);
+  const handleSubmitQuiz = useCallback(() => {
+    setQuizSubmitted(true);
+    const payload = {
+      quizAnswers,
+      quizCorrect: allCorrectNow,
+      quizSubmittedAt: new Date().toISOString(),
+    };
+    void postLessonRun(payload);
+  }, [allCorrectNow, postLessonRun, quizAnswers]);
 
   useEffect(() => {
     if (!quizContent) return;
@@ -681,6 +729,21 @@ export default function LessonPageClient({
     if (activeArc?.id) return new Set([activeArc.id]);
     return new Set(arcs.map((arc) => arc.id));
   });
+  const handlePlaygroundRun = useCallback(
+    (code: string) => {
+      const result = {
+        ok: true,
+        message: "Preview updated. Saved to your lesson history.",
+      };
+      void postLessonRun({
+        codeLanguage,
+        codeSubmitted: code,
+        codeResult: result,
+      });
+      return result;
+    },
+    [codeLanguage, postLessonRun]
+  );
   const tabs: TabId[] =
     trackId === "programming"
       ? ["lesson", "quiz", "notes"]
@@ -1318,7 +1381,7 @@ export default function LessonPageClient({
                   <div className="flex items-center justify-between gap-2 pt-2">
                     <button
                       type="button"
-                      onClick={() => setQuizSubmitted(true)}
+                      onClick={handleSubmitQuiz}
                       className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold bg-[var(--gaia-foreground)] text-[var(--gaia-contrast-text)] shadow-sm hover:shadow-md transition"
                     >
                       Check answers
@@ -1365,6 +1428,7 @@ export default function LessonPageClient({
                   <CodePlayground
                     initialCode={defaultCodeSnippet}
                     language={codeLanguage}
+                    onValidate={handlePlaygroundRun}
                   />
                 </div>
               ) : (
