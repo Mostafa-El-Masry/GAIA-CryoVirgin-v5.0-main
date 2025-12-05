@@ -72,18 +72,21 @@ export default function TodoDaily() {
   // If any is not done, clear the completion flag so the gate locks again.
   useEffect(() => {
     if (!today) return;
-    try {
-      if (allDone) {
-        writeJSON(DAILY_RITUAL_KEY, {
-          date: today,
-          completedAt: new Date().toISOString(),
-        });
-      } else {
-        writeJSON(DAILY_RITUAL_KEY, null);
+    let frame = requestAnimationFrame(() => {
+      try {
+        if (allDone) {
+          writeJSON(DAILY_RITUAL_KEY, {
+            date: today,
+            completedAt: new Date().toISOString(),
+          });
+        } else {
+          writeJSON(DAILY_RITUAL_KEY, null);
+        }
+      } catch {
+        // ignore storage errors; gate will just stay in its previous state
       }
-    } catch {
-      // ignore storage errors; gate will just stay in its previous state
-    }
+    });
+    return () => cancelAnimationFrame(frame);
   }, [allDone, today]);
 
   return (

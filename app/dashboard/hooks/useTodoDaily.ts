@@ -313,13 +313,16 @@ export function useTodoDaily() {
 
   const addQuickTask = useCallback(async (category: Category, title: string, note?: string, priority: 1|2|3 = 2, pinned=false) => {
     const today = getTodayInTZ(KUWAIT_TZ);
-    // find the next date (starting tomorrow) that has no task for this category
-    let targetDate = shiftDate(today, 1);
-    for (let i = 1; i < 365; i += 1) {
+    // find the earliest date (today forward) with no pending task for this category
+    let targetDate = today;
+    for (let i = 0; i < 365; i += 1) {
       const candidate = shiftDate(today, i);
-      const exists = storage.tasks.some(
-        (t) => t.category === category && t.due_date === candidate
-      );
+      const exists = storage.tasks.some((t) => {
+        if (t.category !== category) return false;
+        if (t.due_date !== candidate) return false;
+        const status = t.status_by_date?.[candidate];
+        return status !== "done" && status !== "skipped";
+      });
       if (!exists) {
         targetDate = candidate;
         break;
