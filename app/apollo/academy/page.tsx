@@ -1,9 +1,11 @@
 "use client";
 
+import clsx from "clsx";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { lessonsByTrack, type TrackId } from "./lessonsMap";
 import { useAcademyProgress } from "./useAcademyProgress";
+import type { AcademyProgressState } from "./useAcademyProgress";
 
 type BacklogTier = "clear" | "light" | "medium" | "heavy";
 
@@ -18,6 +20,111 @@ type BacklogByTrack = {
     }
   >;
 };
+
+type PlanSummary = {
+  scheduledDays: number;
+  completedDays: number;
+  backlogDays: number;
+};
+
+type PlanSummaryByTrack = {
+  total: PlanSummary;
+  perTrack: Record<TrackId, PlanSummary>;
+};
+
+function computePlanSummary(
+  state: AcademyProgressState,
+  todayIso: string
+): PlanSummaryByTrack {
+  const scheduleStart = createDateFromIso(SCHEDULE_START_ISO);
+  scheduleStart.setHours(0, 0, 0, 0);
+
+  const end = createDateFromIso(todayIso);
+  // We only consider backlog until yesterday; today is handled in the "today" card.
+  end.setDate(end.getDate() - 1);
+  end.setHours(0, 0, 0, 0);
+
+  const scheduledByTrack: Record<TrackId, number> = {
+    programming: 0,
+    accounting: 0,
+    "self-repair": 0,
+  };
+
+  const cursor = new Date(scheduleStart);
+  cursor.setHours(0, 0, 0, 0);
+
+  while (cursor <= end) {
+    const { trackId, minutes } = getScheduleForDate(cursor);
+    if (minutes > 0) {
+      scheduledByTrack[trackId] += 1;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  const completedByTrack: Record<TrackId, number> = {
+    programming:
+      state.byTrack.programming?.studyHistory?.filter((d) => d <= todayIso)
+        .length ?? 0,
+    accounting:
+      state.byTrack.accounting?.studyHistory?.filter((d) => d <= todayIso)
+        .length ?? 0,
+    "self-repair":
+      state.byTrack["self-repair"]?.studyHistory?.filter((d) => d <= todayIso)
+        .length ?? 0,
+  };
+
+  const perTrack: Record<TrackId, PlanSummary> = {
+    programming: {
+      scheduledDays: scheduledByTrack.programming,
+      completedDays: completedByTrack.programming,
+      backlogDays: Math.max(
+        scheduledByTrack.programming - completedByTrack.programming,
+        0
+      ),
+    },
+    accounting: {
+      scheduledDays: scheduledByTrack.accounting,
+      completedDays: completedByTrack.accounting,
+      backlogDays: Math.max(
+        scheduledByTrack.accounting - completedByTrack.accounting,
+        0
+      ),
+    },
+    "self-repair": {
+      scheduledDays: scheduledByTrack["self-repair"],
+      completedDays: completedByTrack["self-repair"],
+      backlogDays: Math.max(
+        scheduledByTrack["self-repair"] - completedByTrack["self-repair"],
+        0
+      ),
+    },
+  };
+
+  const tracks: TrackId[] = ["programming", "accounting", "self-repair"];
+
+  const totalScheduled = tracks.reduce(
+    (sum, t) => sum + perTrack[t].scheduledDays,
+    0
+  );
+  const totalCompleted = tracks.reduce(
+    (sum, t) => sum + perTrack[t].completedDays,
+    0
+  );
+  const totalBacklog = tracks.reduce(
+    (sum, t) => sum + perTrack[t].backlogDays,
+    0
+  );
+
+  return {
+    total: {
+      scheduledDays: totalScheduled,
+      completedDays: totalCompleted,
+      backlogDays: totalBacklog,
+    },
+    perTrack,
+  };
+}
+
 
 const LAST_VISIT_KEY = "gaia_academy_last_visit_v1";
 
@@ -302,6 +409,16 @@ export default function AcademyDashboardPage() {
     [lastVisitDate, todayIso]
   );
 
+const planSummary = useMemo(
+  () => computePlanSummary(state, todayIso),
+  [state, todayIso]
+);
+
+const aheadDaysTotal = Math.max(
+  planSummary.total.completedDays - planSummary.total.scheduledDays,
+  0
+);
+
   const tracks: TrackId[] = ["programming", "accounting", "self-repair"];
   const trackSummaries = tracks.map((trackId) => {
     const lessons = lessonsByTrack[trackId] ?? [];
@@ -435,10 +552,31 @@ export default function AcademyDashboardPage() {
           </p>
 
           {backlog.totalMinutes === 0 ? (
-            <p className="text-xs text-slate-700">
-              You&apos;re all caught up with your scheduled study days since
-              your last visit. 🎉 Rest days do not create backlog.
-            </p>
+            <>
+              <p className="text-xs text-slate-700">
+                You&apos;re all caught up with your scheduled study days since
+                your last visit. 🎉 Rest days do not create backlog.
+              </p>
+              <p className="mt-1 text-[11px] text-slate-600">
+                Since the plan started, you have completed{" "}
+                <span className="font-semibold">
+                  {planSummary.total.completedDays} scheduled study day
+                  {planSummary.total.completedDays === 1 ? "" : "s"}
+                </span>{" "}
+                out of{" "}
+                <span className="font-semibold">
+                  {planSummary.total.scheduledDays} planned study day
+                  {planSummary.total.scheduledDays === 1 ? "" : "s"}
+                </span>
+                .
+              </p>
+              {aheadDaysTotal > 0 && (
+                <p className="mt-1 text-[11px] text-emerald-700">
+                  You&apos;re ahead of schedule by {aheadDaysTotal} extra study day
+                  {aheadDaysTotal === 1 ? "" : "s"}. Studying on rest days helps pay down any backlog.
+                </p>
+              )}
+            </>
           ) : (
             <>
               <p className="text-xs text-slate-700">
@@ -446,28 +584,70 @@ export default function AcademyDashboardPage() {
                 {backlog.days === 1 ? "" : "s"} (~{" "}
                 {formatApproxHours(backlog.totalMinutes)} total).
               </p>
-              <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {trackSummaries.map((track) => (
-                  <div
-                    key={track.id}
-                    className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
-                  >
-                    <p className="text-[11px] font-semibold text-slate-900">
-                      {trackLabel(track.id)}
-                    </p>
-                    <p className="text-[11px] text-slate-700">
-                      Pending:{" "}
-                      <span className="font-semibold">
-                        {track.backlogMinutes} min
-                      </span>{" "}
-                      (
-                      <span className="italic">
-                        {tierLabel(track.backlogTier)}
-                      </span>
-                      )
-                    </p>
-                  </div>
-                ))}
+              <p className="mt-1 text-[11px] text-slate-600">
+                Since the plan started, you have completed{" "}
+                <span className="font-semibold">
+                  {planSummary.total.completedDays} scheduled study day
+                  {planSummary.total.completedDays === 1 ? "" : "s"}
+                </span>{" "}
+                out of{" "}
+                <span className="font-semibold">
+                  {planSummary.total.scheduledDays} planned study day
+                  {planSummary.total.scheduledDays === 1 ? "" : "s"}
+                </span>
+                .
+              </p>
+              {aheadDaysTotal > 0 && (
+                <p className="mt-1 text-[11px] text-emerald-700">
+                  You&apos;re ahead of schedule by {aheadDaysTotal} extra study day
+                  {aheadDaysTotal === 1 ? "" : "s"}. Those extra sessions reduce older backlog in your calendar.
+                </p>
+              )}
+
+              <div className="mt-4 space-y-2">
+                {tracks.map((trackId) => {
+                  const trackBacklog = backlog.perTrack[trackId];
+                  if (!trackBacklog || trackBacklog.minutes === 0) return null;
+                  const tier = trackBacklog.tier;
+                  const track = trackBacklog;
+                  const label =
+                    trackId === "programming"
+                      ? "Programming"
+                      : trackId === "accounting"
+                      ? "Accounting"
+                      : "Self-repair";
+
+                  return (
+                    <div
+                      key={trackId}
+                      className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={clsx(
+                            "h-2.5 w-2.5 rounded-full",
+                            tier === "light" && "bg-amber-300",
+                            tier === "medium" && "bg-amber-400",
+                            tier === "heavy" && "bg-amber-500"
+                          )}
+                        />
+                        <div>
+                          <p className="text-xs font-medium text-slate-800">
+                            {label}
+                          </p>
+                          <p className="text-[11px] text-slate-600">
+                            {tierLabel(tier)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-semibold text-slate-800">
+                          {track.minutes} min
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

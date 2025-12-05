@@ -146,10 +146,6 @@ export default function LessonPageClient({
     [lessonId, trackId]
   );
 
-  const overrideKey = useMemo(
-    () => `gaia.academy.lesson.content.${lessonId}`,
-    [lessonId]
-  );
   const [override, setOverride] = useState<LessonContentOverride | null>(null);
   const lessonContent = useMemo(
     () => mergeLessonContent(baseContent, override),
@@ -188,9 +184,9 @@ export default function LessonPageClient({
   const [draftPracticeInstructions, setDraftPracticeInstructions] = useState(
     (baseContent.practice?.instructions ?? []).join("\n")
   );
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
-    "idle"
-  );
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [isEditingLesson, setIsEditingLesson] = useState(false);
 
@@ -206,22 +202,37 @@ export default function LessonPageClient({
   }, [markStudyVisit, trackId]);
 
   useEffect(() => {
-    const loadOverride = () => {
-      const stored = readJSON<LessonContentOverride | null>(overrideKey, null);
-      setOverride(stored ?? null);
+    let isCancelled = false;
+
+    const loadOverride = async () => {
+      try {
+        const res = await fetch(
+          "/api/academy/lessons?lessonId=" +
+            encodeURIComponent(lessonId) +
+            "&trackId=" +
+            encodeURIComponent(trackId)
+        );
+        if (!res.ok) {
+          console.error("Failed to load lesson override", res.status);
+          return;
+        }
+        const json = (await res.json()) as {
+          data?: { content?: LessonContentOverride | null } | null;
+        };
+        if (isCancelled) return;
+        const content = (json?.data?.content ?? null) as LessonContentOverride | null;
+        setOverride(content);
+      } catch (error) {
+        console.error("Error loading lesson override", error);
+      }
     };
 
     loadOverride();
-    const offReady = onUserStorageReady(loadOverride);
-    const offStorage = subscribeStorage(({ key }) => {
-      if (key === overrideKey) loadOverride();
-    });
 
     return () => {
-      offReady();
-      offStorage();
+      isCancelled = true;
     };
-  }, [overrideKey]);
+  }, [lessonId, trackId]);
 
   useEffect(() => {
     const study =
@@ -248,7 +259,7 @@ export default function LessonPageClient({
     setIsEditingLesson(false);
   }, [lessonId, baseContent, override]);
 
-  const handleSaveOverride = () => {
+  const handleSaveOverride = async () => {
     setSaveStatus("saving");
     setSaveMessage(null);
 
@@ -285,20 +296,75 @@ export default function LessonPageClient({
       };
     }
 
-    writeJSON(overrideKey, payload);
-    setOverride(payload);
-    setSaveStatus("saved");
-    setSaveMessage("Saved. Your edits sync across your devices.");
-    setIsEditingLesson(false);
-    setTimeout(() => setSaveStatus("idle"), 1200);
+    try {
+      const res = await fetch("/api/academy/lessons", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          lessonId,
+          trackId,
+          content: payload,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to save lesson override: ${res.status}`);
+      }
+
+      const json = (await res.json()) as {
+        data?: { content?: LessonContentOverride | null } | null;
+      };
+      const savedContent =
+        (json?.data?.content as LessonContentOverride | null) ?? payload;
+
+      setOverride(savedContent);
+      setSaveStatus("saved");
+      setSaveMessage(
+        "Saved to the Academy lesson table (shared across all users)."
+      );
+      setIsEditingLesson(false);
+    } catch (error) {
+      console.error("Failed to save lesson override", error);
+      setSaveStatus("error");
+      setSaveMessage(
+        "Failed to save lesson. Please check your network or Supabase configuration."
+      );
+    } finally {
+      setTimeout(() => setSaveStatus("idle"), 1200);
+    }
   };
 
-  const handleResetOverride = () => {
-    removeItem(overrideKey);
-    setOverride(null);
-    setSaveStatus("idle");
-    setSaveMessage("Reverted to the original lesson content.");
-    setIsEditingLesson(false);
+  const handleResetOverride = async () => {
+    setSaveStatus("saving");
+    setSaveMessage(null);
+
+    try {
+      const res = await fetch(
+        "/api/academy/lessons?lessonId=" + encodeURIComponent(lessonId),
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error(`Failed to reset lesson override: ${res.status}`);
+      }
+
+      setOverride(null);
+      setSaveStatus("saved");
+      setSaveMessage("Reverted to the original lesson content.");
+      setIsEditingLesson(false);
+    } catch (error) {
+      console.error("Failed to reset lesson override", error);
+      setSaveStatus("error");
+      setSaveMessage(
+        "Failed to reset lesson. Please check your network or Supabase configuration."
+      );
+    } finally {
+      setTimeout(() => setSaveStatus("idle"), 1200);
+    }
   };
 
   useEffect(() => {
