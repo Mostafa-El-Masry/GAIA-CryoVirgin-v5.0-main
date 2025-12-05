@@ -14,7 +14,11 @@ import { shiftDate } from "@/utils/dates";
 type StatusTone = "pending" | "done" | "skipped";
 type StatusResolution = { label: string; tone: StatusTone; dateLabel: string };
 type DragState = { id: string; category: Category } | null;
-type DropTarget = { category: Category; id: string | null; position: "before" | "after" } | null;
+type DropTarget = {
+  category: Category;
+  id: string | null;
+  position: "before" | "after";
+} | null;
 
 const LABELS: Record<Category, string> = {
   life: "Life",
@@ -25,7 +29,8 @@ const LABELS: Record<Category, string> = {
 const HINTS: Record<Category, string> = {
   life: "Use this for home, errands, relationships, errands, and anything that keeps your life moving.",
   work: "Tasks related to your job, GAIA building, study sessions, and deep work blocks.",
-  distraction: "Things you want to deliberately enjoy or limit: games, scrolling, and time sinks.",
+  distraction:
+    "Things you want to deliberately enjoy or limit: games, scrolling, and time sinks.",
 };
 
 const CATEGORY_ORDER: Category[] = ["life", "work", "distraction"];
@@ -54,22 +59,130 @@ function compareDueDate(a?: string | null, b?: string | null) {
   if (!a && !b) return 0;
   if (!a) return 1;
   if (!b) return -1;
-  return a.localeCompare(b);
+  return b.localeCompare(a);
+}
+
+function parseDate(value?: string | null) {
+  if (!value) return null;
+  const d = new Date(`${value}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function todayInput(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export default function TODOPage() {
   const {
     tasks,
     today,
+    refresh,
     deleteTask,
     addQuickTask,
     editTask,
     setTaskStatus,
   } = useTodoDaily();
-  const [storageStatus, setStorageStatus] = useState({ synced: false, hasTasks: false });
+  const [storageStatus, setStorageStatus] = useState({
+    synced: false,
+    hasTasks: false,
+  });
   const [drafts, setDrafts] = useState<Record<Category, string>>(EMPTY_DRAFTS);
+  const [draftsDue, setDraftsDue] = useState<Record<Category, string>>({
+    life: todayInput(),
+    work: todayInput(),
+    distraction: todayInput(),
+  });
   const [dragging, setDragging] = useState<DragState>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget>(null);
+  const todayMeta = useMemo(() => {
+    try {
+      const date = new Date(`${today}T00:00:00`);
+      return {
+        dayName: new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
+          date
+        ),
+        monthName: new Intl.DateTimeFormat("en-US", { month: "long" }).format(
+          date
+        ),
+        monthShort: new Intl.DateTimeFormat("en-US", { month: "short" }).format(
+          date
+        ),
+        dayNumber: date.getDate(),
+      };
+    } catch {
+      return { dayName: "Today", monthName: "", monthShort: "", dayNumber: 0 };
+    }
+  }, [today]);
+  const heroMeta = useMemo(() => {
+    const now = new Date();
+    return {
+      dayName: new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
+        now
+      ),
+      monthName: new Intl.DateTimeFormat("en-US", { month: "long" }).format(
+        now
+      ),
+      monthShort: new Intl.DateTimeFormat("en-US", { month: "short" }).format(
+        now
+      ),
+      dayNumber: now.getDate(),
+    };
+  }, [today]);
+  const completion = useMemo(() => {
+    let done = 0;
+    tasks.forEach((t) => {
+      const status = t.status_by_date?.[today];
+      if (status === "done") done += 1;
+    });
+    return { done, total: tasks.length };
+  }, [tasks, today]);
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  }, []);
+  const counts = useMemo(() => {
+    const todayDate = parseDate(today);
+    let todayPending = 0;
+    let nextSeven = 0;
+    let allPending = 0;
+    tasks.forEach((t) => {
+      const status = t.status_by_date?.[today];
+      const isDone = status === "done" || status === "skipped";
+      if (!isDone) allPending += 1;
+      const due = parseDate(t.due_date);
+      if (due && todayDate) {
+        const diffDays = Math.round(
+          (due.getTime() - todayDate.getTime()) / 86400000
+        );
+        if (!isDone && diffDays === 0) todayPending += 1;
+        if (!isDone && diffDays >= 0 && diffDays <= 6) nextSeven += 1;
+      }
+    });
+    return { todayPending, nextSeven, allPending };
+  }, [tasks, today]);
+  const navItems = [
+    {
+      key: "day",
+      label: "My Day",
+      count: counts.todayPending,
+      helper: "Due today",
+    },
+    {
+      key: "week",
+      label: "Next 7 days",
+      count: counts.nextSeven,
+      helper: "Upcoming week",
+    },
+    {
+      key: "all",
+      label: "All tasks",
+      count: counts.allPending,
+      helper: "Pending total",
+    },
+  ];
+  const [navActive, setNavActive] = useState<"day" | "week" | "all">("day");
 
   useEffect(() => {
     let cancelled = false;
@@ -101,17 +214,29 @@ export default function TODOPage() {
   }, []);
 
   const byCat = useMemo(() => {
-    const map: Record<Category, Task[]> = { life: [], work: [], distraction: [] };
+    const map: Record<Category, Task[]> = {
+      life: [],
+      work: [],
+      distraction: [],
+    };
     for (const t of tasks) map[t.category].push(t);
     return map;
   }, [tasks]);
 
   const orderedByCat = useMemo(() => {
-    const map: Record<Category, Task[]> = { life: [], work: [], distraction: [] };
+    const map: Record<Category, Task[]> = {
+      life: [],
+      work: [],
+      distraction: [],
+    };
     (Object.keys(byCat) as Category[]).forEach((cat) => {
       map[cat] = byCat[cat]
         .slice()
-        .sort((a, b) => compareDueDate(a.due_date, b.due_date) || a.created_at.localeCompare(b.created_at));
+        .sort(
+          (a, b) =>
+            compareDueDate(a.due_date, b.due_date) ||
+            b.created_at.localeCompare(a.created_at)
+        );
     });
     return map;
   }, [byCat]);
@@ -122,35 +247,42 @@ export default function TODOPage() {
     if (entries.length > 0) {
       entries.sort((a, b) => b[0].localeCompare(a[0]));
       const [, status] = entries[0];
-      tone = status === "done" ? "done" : status === "skipped" ? "skipped" : "pending";
+      tone =
+        status === "done"
+          ? "done"
+          : status === "skipped"
+          ? "skipped"
+          : "pending";
     }
     return {
-      label: tone === "done" ? "Done" : tone === "skipped" ? "Skipped" : "Pending",
+      label:
+        tone === "done" ? "Done" : tone === "skipped" ? "Skipped" : "Pending",
       tone,
-      // Show a single timing: the task's due date or Unscheduled.
       dateLabel: task.due_date ?? "Unscheduled",
     };
   }, []);
 
   const toneStyles: Record<StatusTone, string> = {
     pending:
-      "bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-400/20 dark:text-amber-200 dark:border-amber-400/30",
-    done: "bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-400/20 dark:text-emerald-100 dark:border-emerald-400/30",
+      "bg-[color-mix(in_srgb,var(--gaia-warning)_18%,transparent)] text-[var(--gaia-text-strong)] ring-1 ring-[color-mix(in_srgb,var(--gaia-warning)_45%,transparent)]",
+    done: "bg-[color-mix(in_srgb,var(--gaia-positive)_18%,transparent)] text-[var(--gaia-text-strong)] ring-1 ring-[color-mix(in_srgb,var(--gaia-positive)_45%,transparent)]",
     skipped:
-      "bg-slate-200 text-slate-700 border border-slate-300 dark:bg-slate-600/30 dark:text-slate-200 dark:border-slate-500",
+      "bg-[color-mix(in_srgb,var(--gaia-text-muted)_22%,transparent)] text-[var(--gaia-text-strong)] ring-1 ring-[color-mix(in_srgb,var(--gaia-border)_70%,transparent)]",
   };
 
   const handleAdd = useCallback(
     async (category: Category) => {
       const title = drafts[category]?.trim();
       if (!title) return;
+      const due = draftsDue[category]?.trim() || null;
       try {
-        await addQuickTask(category, title);
+        await addQuickTask(category, title, undefined, 2, false, due);
       } finally {
         setDrafts((prev) => ({ ...prev, [category]: "" }));
+        setDraftsDue((prev) => ({ ...prev, [category]: todayInput() }));
       }
     },
-    [addQuickTask, drafts]
+    [addQuickTask, drafts, draftsDue]
   );
 
   const handleDateChange = useCallback(
@@ -163,7 +295,10 @@ export default function TODOPage() {
 
   const handleStatusChange = useCallback(
     (task: Task, next: StatusTone) => {
-      const targetDate = task.due_date && task.due_date !== "Unscheduled" ? task.due_date : today;
+      const targetDate =
+        task.due_date && task.due_date !== "Unscheduled"
+          ? task.due_date
+          : today;
       setTaskStatus(task.id, targetDate, next);
     },
     [setTaskStatus, today]
@@ -172,7 +307,8 @@ export default function TODOPage() {
   const resequenceCategory = useCallback(
     async (category: Category, orderedTasks: Task[]) => {
       if (orderedTasks.length === 0) return;
-      const firstDate = orderedTasks.find((t) => t.due_date)?.due_date || shiftDate(today, 1);
+      const firstDate =
+        orderedTasks.find((t) => t.due_date)?.due_date || shiftDate(today, 1);
       const updates: Promise<unknown>[] = [];
       orderedTasks.forEach((task, idx) => {
         const nextDate = shiftDate(firstDate, idx);
@@ -186,7 +322,11 @@ export default function TODOPage() {
   );
 
   const handleDrop = useCallback(
-    async (category: Category, targetId: string | null, position: "before" | "after") => {
+    async (
+      category: Category,
+      targetId: string | null,
+      position: "before" | "after"
+    ) => {
       if (!dragging || dragging.category !== category) {
         setDragging(null);
         setDropTarget(null);
@@ -217,191 +357,424 @@ export default function TODOPage() {
 
   const dragIndicator = (taskId: string, category: Category) => {
     if (!dragging || dragging.category !== category) return "";
-    if (dragging.id === taskId) return "ring-2 ring-primary/70";
+    if (dragging.id === taskId)
+      return "ring-2 ring-sky-400/70 shadow-[0_0_0_1px_rgba(56,189,248,0.35)]";
     if (dropTarget?.id === taskId && dropTarget.category === category) {
       return dropTarget.position === "before"
-        ? "border-t-2 border-primary/70"
-        : "border-b-2 border-primary/70";
+        ? "border-t border-sky-400/70"
+        : "border-b border-sky-400/70";
     }
     return "";
   };
 
+  const navTargets: Record<"day" | "week" | "all", string> = {
+    day: "todo-hero",
+    week: "todo-grid",
+    all: "todo-grid-bottom",
+  };
+
+  const handleNavClick = useCallback(
+    (key: "day" | "week" | "all") => {
+      setNavActive(key);
+      const targetId = navTargets[key];
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    },
+    []
+  );
+
   return (
-    <main className="mx-auto max-w-5xl p-4">
-      <header className="mb-8 space-y-3 rounded-2xl border border-base-300 bg-gradient-to-r from-base-100 via-base-50 to-base-100 p-6 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-bold tracking-tight">TODO {"\u2014"} All Tasks</h1>
-          <span className="inline-flex items-center gap-2 rounded-full border border-base-300/70 px-3 py-1 text-xs text-base-content/70">
-            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: storageStatus.synced ? "var(--gaia-positive)" : "var(--gaia-warning)" }} />
-            {storageStatus.synced ? "Backed up to Supabase" : "Local only"}
-          </span>
-          <span className="text-xs text-base-content/60">
-            Local cache {storageStatus.hasTasks ? "present" : "empty"}
-          </span>
-        </div>
-        <p className="max-w-3xl text-sm text-base-content/70">
-          Drag to reorder tasks inside each category. The order controls the scheduled date for that category, keeping one task per day. Drop at a new position to push its due date forward/backward automatically.
-        </p>
-      </header>
+    <main className="relative w-[100vw] gaia-surface text-[var(--gaia-text-default)]">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -right-40 -top-32 h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle_at_center,_color-mix(in_srgb,var(--gaia-contrast-bg)_35%,transparent),_color-mix(in_srgb,var(--gaia-surface-soft)_18%,transparent),transparent)] blur-3xl" />
+        <div className="absolute -right-10 top-56 h-[460px] w-[460px] rounded-full bg-[radial-gradient(circle_at_center,_color-mix(in_srgb,var(--gaia-positive)_32%,transparent),_color-mix(in_srgb,var(--gaia-contrast-bg)_12%,transparent),transparent)] blur-3xl" />
+        <div className="absolute -left-52 top-10 h-[360px] w-[360px] rounded-full bg-[radial-gradient(circle_at_center,_color-mix(in_srgb,var(--gaia-info)_22%,transparent),_color-mix(in_srgb,var(--gaia-contrast-bg)_10%,transparent),transparent)] blur-3xl" />
+      </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {CATEGORY_ORDER.map((cat) => (
-          <section
-            key={cat}
-            className="flex h-full flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100/60 shadow-sm"
-          >
-            <div className="space-y-1 border-b border-base-300 bg-base-50/80 px-4 py-3">
-              <h2 className="text-lg font-semibold tracking-tight">{LABELS[cat]}</h2>
-              <p className="text-xs text-base-content/60">{HINTS[cat]}</p>
+      <div className="relative mx-auto w-[75vw] px-4 py-10 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-[240px,1fr]">
+          <aside className="sticky top-6 h-[80vh] overflow-auto rounded-2xl border gaia-border bg-[var(--gaia-surface)] p-4 shadow-xl shadow-black/15">
+            <div className="mb-4">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--gaia-text-muted)]">
+                Navigation
+              </p>
+              <h3 className="text-lg font-semibold text-[var(--gaia-text-strong)]">
+                Today & beyond
+              </h3>
             </div>
+            <ul className="space-y-2">
+              {navItems.map((item) => (
+                <li key={item.key}>
+                  <button
+                    type="button"
+                    onClick={() => handleNavClick(item.key as "day" | "week" | "all")}
+                    className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-sm font-semibold text-[var(--gaia-text-default)] shadow-sm transition hover:border-[var(--gaia-contrast-bg)] hover:shadow ${
+                      navActive === item.key
+                        ? "border-[var(--gaia-contrast-bg)] bg-[color-mix(in_srgb,var(--gaia-contrast-bg)_12%,transparent)]"
+                        : "gaia-border bg-[var(--gaia-surface-soft)]"
+                    }`}
+                  >
+                    <div className="flex flex-col leading-tight text-left">
+                      <span className="text-[var(--gaia-text-strong)]">
+                        {item.label}
+                      </span>
+                      <span className="text-[11px] font-medium text-[var(--gaia-text-muted)]">
+                        {item.helper}
+                      </span>
+                    </div>
+                    <span className="rounded-full bg-[var(--gaia-surface)] px-3 py-1 text-xs font-bold text-[var(--gaia-text-strong)] ring-1 ring-[var(--gaia-border)]">
+                      {item.count}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-xl border gaia-border bg-[var(--gaia-surface-soft)] px-3 py-2">
+                <p className="text-[var(--gaia-text-muted)]">Synced</p>
+                <p className="text-lg font-semibold text-[var(--gaia-text-strong)]">
+                  {storageStatus.synced ? "Yes" : "Local"}
+                </p>
+              </div>
+              <div className="rounded-xl border gaia-border bg-[var(--gaia-surface-soft)] px-3 py-2">
+                <p className="text-[var(--gaia-text-muted)]">Done today</p>
+                <p className="text-lg font-semibold text-[var(--gaia-text-strong)]">
+                  {completion.done}
+                </p>
+              </div>
+            </div>
+          </aside>
 
-            <div className="flex flex-1 flex-col">
-              {orderedByCat[cat].length === 0 ? (
-                <div className="space-y-1 p-5 text-sm text-base-content/60">
-                  <p>No tasks in this category yet.</p>
-                  <p>
-                    Add one below or from the dashboard&apos;s &quot;Today&apos;s Focus&quot; cards using Quick Add, and they&apos;ll sync here automatically.
+          <div className="space-y-8" id="todo-main">
+            <div id="todo-hero" />
+            <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--gaia-text-muted)]">
+                  My Day
+                </p>
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-bold tracking-tight text-[var(--gaia-text-strong)] sm:text-5xl">
+                    {greeting}, Mostafa.
+                  </h1>
+                  <p className="text-lg font-semibold text-[var(--gaia-text-strong)]">
+                    What will you accomplish today?
+                  </p>
+                  <p className="max-w-2xl text-sm text-[var(--gaia-text-muted)]">
+                    Drag to reorder tasks inside each category. Dropping a task
+                    pushes its scheduled date forward or backward automatically
+                    so every category keeps one task per day.
                   </p>
                 </div>
-              ) : (
-                <ul
-                  className="divide-y divide-base-300"
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    const lastId = orderedByCat[cat][orderedByCat[cat].length - 1]?.id ?? null;
-                    if (dragging && dragging.category === cat) {
-                      setDropTarget({ id: lastId, category: cat, position: "after" });
-                    }
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    void handleDrop(cat, dropTarget?.id ?? null, dropTarget?.position ?? "after");
-                  }}
-                >
-                  {orderedByCat[cat].map((t) => {
-                    const statusMeta = resolveStatus(t);
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-[color-mix(in_srgb,var(--gaia-positive)_16%,transparent)] px-3 py-1 font-semibold text-[var(--gaia-text-strong)] ring-1 ring-[color-mix(in_srgb,var(--gaia-positive)_45%,transparent)]">
+                    <span className="h-2 w-2 rounded-full bg-[var(--gaia-positive)]" />
+                    {storageStatus.synced
+                      ? "Backed up to Supabase"
+                      : "Local only"}
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-[var(--gaia-surface-soft)] px-3 py-1 font-medium text-[var(--gaia-text-default)] ring-1 ring-[var(--gaia-border)]">
+                    Cache {storageStatus.hasTasks ? "present" : "empty"}
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-[var(--gaia-surface-soft)] px-3 py-1 font-medium text-[var(--gaia-text-default)] ring-1 ring-[var(--gaia-border)]">
+                    {completion.done} / {completion.total || 1} done today
+                  </span>
+                </div>
+              </div>
 
-                    return (
-                      <li
-                        key={t.id}
-                        className={`p-3 transition ${dragIndicator(t.id, cat)}`}
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer?.setData("text/plain", t.id);
-                          e.dataTransfer?.setDragImage(e.currentTarget, 10, 10);
-                          e.dataTransfer.effectAllowed = "move";
-                          setDragging({ id: t.id, category: cat });
-                        }}
-                        onDragEnter={(e) => {
-                          const { top, height } = e.currentTarget.getBoundingClientRect();
-                          const before = e.clientY < top + height / 2;
-                          setDropTarget({ id: t.id, category: cat, position: before ? "before" : "after" });
-                        }}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          const { top, height } = e.currentTarget.getBoundingClientRect();
-                          const before = e.clientY < top + height / 2;
-                          setDropTarget({ id: t.id, category: cat, position: before ? "before" : "after" });
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const pos = dropTarget?.position ?? "after";
-                          void handleDrop(cat, t.id, pos);
-                        }}
-                        onDragEnd={() => {
-                          setDragging(null);
-                          setDropTarget(null);
-                        }}
+              <div className="w-full max-w-sm overflow-hidden rounded-2xl border gaia-border bg-[var(--gaia-surface-soft)] shadow-2xl shadow-black/20 backdrop-blur">
+                <div className="flex items-center justify-between border-b gaia-border px-4 py-3">
+                  <div className="space-y-0.5">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--gaia-text-muted)]">
+                      Today
+                    </p>
+                    <p className="text-lg font-semibold text-[var(--gaia-text-strong)]">
+                      {heroMeta.dayName}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[color-mix(in_srgb,var(--gaia-info)_16%,transparent)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--gaia-text-strong)] ring-1 ring-[color-mix(in_srgb,var(--gaia-info)_45%,transparent)]">
+                    Focus
+                  </span>
+                </div>
+                <div className="flex items-end gap-3 px-4 pb-4 pt-5">
+                  <div className="text-5xl font-bold leading-none text-[var(--gaia-text-strong)]">
+                    {heroMeta.dayNumber}
+                  </div>
+                  <div className="space-y-1 text-sm text-[var(--gaia-text-default)]">
+                    <div className="font-semibold">{heroMeta.monthName}</div>
+                    <div className="text-[var(--gaia-text-muted)]">
+                      {heroMeta.monthShort}
+                    </div>
+                  </div>
+                  <div className="ml-auto flex flex-col items-end gap-1 text-xs text-[var(--gaia-text-muted)]">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--gaia-surface)] px-2 py-1 font-semibold text-[var(--gaia-text-default)] ring-1 ring-[var(--gaia-border)]">
+                      {tasks.length} tasks
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--gaia-positive)_16%,transparent)] px-2 py-1 font-semibold text-[var(--gaia-text-strong)] ring-1 ring-[color-mix(in_srgb,var(--gaia-positive)_35%,transparent)]">
+                      {completion.done} completed
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 border-t gaia-border px-4 py-3 text-[11px] text-[var(--gaia-text-default)]">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-[var(--gaia-surface)] px-3 py-1 font-semibold ring-1 ring-[var(--gaia-border)]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--gaia-info)]" />
+                    Drag to reorder
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-[var(--gaia-surface)] px-3 py-1 font-semibold ring-1 ring-[var(--gaia-border)]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--gaia-positive)]" />
+                    Auto reschedules dates
+                  </span>
+                </div>
+              </div>
+            </header>
+
+            <div className="mt-8 space-y-5" id="todo-grid">
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {CATEGORY_ORDER.map((cat) => (
+                  <section
+                    key={cat}
+                    className="group flex h-full flex-col overflow-hidden rounded-2xl border gaia-border bg-[var(--gaia-surface-soft)] shadow-xl shadow-black/20 backdrop-blur transition hover:border-[var(--gaia-contrast-bg)]/70"
+                  >
+                    <div className="flex items-start justify-between border-b gaia-border px-4 py-4">
+                      <div className="space-y-1">
+                        <h2 className="text-lg font-semibold tracking-tight text-[var(--gaia-text-strong)]">
+                          {LABELS[cat]}
+                        </h2>
+                        <p className="text-xs text-[var(--gaia-text-muted)]">
+                          {HINTS[cat]}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-[var(--gaia-surface)] px-3 py-1 text-xs font-semibold text-[var(--gaia-text-default)] ring-1 ring-[var(--gaia-border)]">
+                        {orderedByCat[cat].length} tasks
+                      </span>
+                    </div>
+
+                    <form
+                      className="flex flex-wrap items-center gap-2 border-b gaia-border bg-[var(--gaia-surface)] px-4 py-3 text-sm"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void handleAdd(cat);
+                      }}
+                    >
+                      <label className="sr-only" htmlFor={`todo-add-${cat}`}>
+                        Add {LABELS[cat]} task
+                      </label>
+                      <input
+                        id={`todo-add-${cat}`}
+                        className="flex-1 rounded-xl border gaia-border bg-[var(--gaia-surface-soft)] px-3 py-2 text-sm text-[var(--gaia-text-default)] placeholder:text-[var(--gaia-text-muted)] shadow-inner shadow-black/10 focus:border-[var(--gaia-contrast-bg)] focus:outline-none"
+                        placeholder={`Add a ${LABELS[cat]} task...`}
+                        value={drafts[cat]}
+                        onChange={(e) =>
+                          setDrafts((prev) => ({
+                            ...prev,
+                            [cat]: e.target.value,
+                          }))
+                        }
+                      />
+                      <input
+                        type="date"
+                        className="w-[140px] rounded-xl border gaia-border bg-[var(--gaia-surface-soft)] px-3 py-2 text-sm text-[var(--gaia-text-default)]"
+                        value={draftsDue[cat]}
+                        onChange={(e) =>
+                          setDraftsDue((prev) => ({
+                            ...prev,
+                            [cat]: e.target.value || todayInput(),
+                          }))
+                        }
+                      />
+                      <button
+                        type="submit"
+                        className="rounded-xl bg-[var(--gaia-contrast-bg)] px-4 py-2 text-sm font-semibold text-[var(--gaia-contrast-text)] shadow-lg shadow-black/10 transition hover:translate-y-px hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                        disabled={!drafts[cat].trim()}
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-base-200 text-[10px] uppercase text-base-content/70 shadow-inner cursor-grab active:cursor-grabbing">
-                                :::
-                              </span>
-                              <div className="font-medium">{t.title}</div>
-                            </div>
-                            {t.note && (
-                              <p className="text-sm text-base-content/70">{t.note}</p>
-                            )}
-                            {t.repeat && t.repeat !== "none" && (
-                              <p className="mt-1 text-[11px] uppercase tracking-wide text-base-content/60">
-                                Repeats: {String(t.repeat)}
-                              </p>
-                            )}
+                        Add
+                      </button>
+                    </form>
 
-                            <div className="mt-3 flex flex-wrap gap-3 text-xs text-base-content/70">
-                              <label className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${toneStyles[statusMeta.tone]}`}>
-                                <span>Status</span>
-                                <select
-                                  className="rounded border border-base-200 bg-base-100 px-2 py-1 text-base-content font-semibold"
-                                  value={statusMeta.tone}
-                                  onChange={(e) => handleStatusChange(t, e.target.value as StatusTone)}
-                                >
-                                  <option value="pending">Pending</option>
-                                  <option value="done">Done</option>
-                                  <option value="skipped">Skipped</option>
-                                </select>
-                              </label>
-                              <label className="flex items-center gap-2 rounded-lg border border-base-300 bg-base-50 px-3 py-2 text-xs font-semibold">
-                                <span>Due</span>
-                                <input
-                                  type="date"
-                                  className="rounded border border-base-200 bg-base-100 px-2 py-1 text-base-content font-semibold"
-                                  value={t.due_date ?? ""}
-                                  min="2025-01-01"
-                                  max="2030-12-31"
-                                  onChange={(e) => handleDateChange(t.id, e.target.value)}
-                                />
-                              </label>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              className="rounded-lg border border-base-300 px-2 py-1 text-xs text-base-content/70 hover:bg-base-200"
-                              onClick={() => deleteTask(t.id)}
-                              title="Delete task"
-                            >
-                              Delete
-                            </button>
-                          </div>
+                    <div className="flex flex-1 flex-col">
+                      {orderedByCat[cat].length === 0 ? (
+                        <div className="space-y-2 px-4 py-6 text-sm text-[var(--gaia-text-muted)]">
+                          <p className="font-semibold text-[var(--gaia-text-strong)]">
+                            No tasks yet.
+                          </p>
+                          <p>
+                            Add one above or quick-add from the dashboard -
+                            everything syncs here automatically.
+                          </p>
                         </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+                      ) : (
+                        <ul
+                          className="divide-y divide-[var(--gaia-border)]/60"
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            const lastId =
+                              orderedByCat[cat][orderedByCat[cat].length - 1]
+                                ?.id ?? null;
+                            if (dragging && dragging.category === cat) {
+                              setDropTarget({
+                                id: lastId,
+                                category: cat,
+                                position: "after",
+                              });
+                            }
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            void handleDrop(
+                              cat,
+                              dropTarget?.id ?? null,
+                              dropTarget?.position ?? "after"
+                            );
+                          }}
+                        >
+                          {orderedByCat[cat].map((t) => {
+                            const statusMeta = resolveStatus(t);
 
-              <form
-                className="flex flex-wrap items-center gap-2 border-t border-base-300 bg-base-50/70 p-3 text-sm"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void handleAdd(cat);
-                }}
-              >
-                <label className="sr-only" htmlFor={`todo-add-${cat}`}>
-                  Add {LABELS[cat]} task
-                </label>
-                <input
-                  id={`todo-add-${cat}`}
-                  className="flex-1 rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-content placeholder:text-base-content/40"
-                  placeholder={`Add a ${LABELS[cat]} task...`}
-                  value={drafts[cat]}
-                  onChange={(e) =>
-                    setDrafts((prev) => ({ ...prev, [cat]: e.target.value }))
-                  }
-                />
-                <button
-                  type="submit"
-                  className="rounded-lg bg-base-content px-4 py-2 text-sm font-semibold text-base-100 transition hover:opacity-90 disabled:opacity-40"
-                  disabled={!drafts[cat].trim()}
-                >
-                  Add
-                </button>
-              </form>
+                            return (
+                              <li
+                                key={t.id}
+                                className={`relative p-4 transition duration-150 ${dragIndicator(
+                                  t.id,
+                                  cat
+                                )}`}
+                                draggable
+                                onDragStart={(e) => {
+                                  e.dataTransfer?.setData("text/plain", t.id);
+                                  e.dataTransfer?.setDragImage(
+                                    e.currentTarget,
+                                    10,
+                                    10
+                                  );
+                                  e.dataTransfer.effectAllowed = "move";
+                                  setDragging({ id: t.id, category: cat });
+                                }}
+                                onDragEnter={(e) => {
+                                  const { top, height } =
+                                    e.currentTarget.getBoundingClientRect();
+                                  const before = e.clientY < top + height / 2;
+                                  setDropTarget({
+                                    id: t.id,
+                                    category: cat,
+                                    position: before ? "before" : "after",
+                                  });
+                                }}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  const { top, height } =
+                                    e.currentTarget.getBoundingClientRect();
+                                  const before = e.clientY < top + height / 2;
+                                  setDropTarget({
+                                    id: t.id,
+                                    category: cat,
+                                    position: before ? "before" : "after",
+                                  });
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  const pos = dropTarget?.position ?? "after";
+                                  void handleDrop(cat, t.id, pos);
+                                }}
+                                onDragEnd={() => {
+                                  setDragging(null);
+                                  setDropTarget(null);
+                                }}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <span className="mt-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--gaia-surface)] text-[11px] font-bold uppercase text-[var(--gaia-text-default)] ring-1 ring-[var(--gaia-border)] cursor-grab active:cursor-grabbing">
+                                    ?
+                                  </span>
+                                  <div className="flex-1 space-y-2">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="space-y-1">
+                                        <div className="text-base font-semibold leading-tight text-[var(--gaia-text-strong)]">
+                                          {t.title}
+                                        </div>
+                                        {t.note && (
+                                          <p className="text-sm text-[var(--gaia-text-muted)]">
+                                            {t.note}
+                                          </p>
+                                        )}
+                                        {t.repeat && t.repeat !== "none" && (
+                                          <p className="text-[11px] uppercase tracking-wide text-[var(--gaia-text-muted)]">
+                                            Repeats: {String(t.repeat)}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <span className="rounded-full bg-[var(--gaia-surface)] px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--gaia-text-default)] ring-1 ring-[var(--gaia-border)]">
+                                        {LABELS[cat]}
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--gaia-text-default)]">
+                                      <label
+                                        className={`flex items-center gap-2 rounded-lg px-3 py-2 font-semibold shadow-sm ${
+                                          toneStyles[statusMeta.tone]
+                                        }`}
+                                      >
+                                        <span>Status</span>
+                                        <select
+                                          className="rounded border gaia-border bg-[var(--gaia-surface)] px-2 py-1 text-[var(--gaia-text-default)]"
+                                          value={statusMeta.tone}
+                                          onChange={(e) =>
+                                            handleStatusChange(
+                                              t,
+                                              e.target.value as StatusTone
+                                            )
+                                          }
+                                        >
+                                          <option value="pending">
+                                            Pending
+                                          </option>
+                                          <option value="done">Done</option>
+                                          <option value="skipped">
+                                            Skipped
+                                          </option>
+                                        </select>
+                                      </label>
+                                      <label className="flex items-center gap-2 rounded-lg bg-[var(--gaia-surface)] px-3 py-2 font-semibold text-[var(--gaia-text-default)] ring-1 ring-[var(--gaia-border)]">
+                                        <span>Due</span>
+                                        <input
+                                          type="date"
+                                          className="rounded border gaia-border bg-[var(--gaia-surface)] px-2 py-1 text-[var(--gaia-text-default)]"
+                                          value={t.due_date ?? ""}
+                                          min="2025-01-01"
+                                          max="2030-12-31"
+                                          onChange={(e) =>
+                                            handleDateChange(
+                                              t.id,
+                                              e.target.value
+                                            )
+                                          }
+                                        />
+                                      </label>
+                                      <span className="inline-flex items-center gap-2 rounded-lg bg-[var(--gaia-surface)] px-3 py-2 font-semibold text-[var(--gaia-text-default)] ring-1 ring-[var(--gaia-border)]">
+                                        <span className="h-2 w-2 rounded-full bg-[var(--gaia-text-muted)]" />
+                                        {statusMeta.label} -{" "}
+                                        {formatShortDate(t.due_date)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    className="ml-2 inline-flex items-center rounded-lg bg-[color-mix(in_srgb,var(--gaia-negative)_16%,transparent)] px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--gaia-text-strong)] ring-1 ring-[color-mix(in_srgb,var(--gaia-negative)_45%,transparent)] transition hover:bg-[color-mix(in_srgb,var(--gaia-negative)_22%,transparent)]"
+                                    onClick={() => deleteTask(t.id)}
+                                    title="Delete task"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </section>
+                ))}
+              </div>
             </div>
-          </section>
-        ))}
+            <div id="todo-grid-bottom" />
+          </div>
+        </div>
       </div>
     </main>
   );
@@ -417,11 +790,13 @@ function StatusRow({ task, toneStyles, status }: StatusRowProps) {
   return (
     <div className="mt-2 flex flex-wrap gap-2 text-xs">
       <span
-        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${toneStyles[status.tone]}`}
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${
+          toneStyles[status.tone]
+        }`}
       >
         Status: {status.label}
       </span>
-      <span className="inline-flex items-center gap-1 rounded-full border border-base-300/60 px-2 py-0.5 text-base-content/70">
+      <span className="inline-flex items-center gap-1 rounded-full bg-[var(--gaia-surface)] px-2 py-0.5 text-[var(--gaia-text-default)] ring-1 ring-[var(--gaia-border)]">
         Due: {formatShortDate(task.due_date ?? status.dateLabel)}
       </span>
     </div>

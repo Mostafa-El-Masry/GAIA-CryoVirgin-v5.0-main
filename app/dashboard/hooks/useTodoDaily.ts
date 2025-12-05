@@ -18,6 +18,21 @@ export type RepeatRule =
   | "weekdays"
   | "weekends"
   | `weekly:Mon` | `weekly:Tue` | `weekly:Wed` | `weekly:Thu` | `weekly:Fri` | `weekly:Sat` | `weekly:Sun`;
+const VALID_WEEKDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] as const;
+function normalizeRepeat(value: unknown): RepeatRule {
+  if (value === "daily" || value === "weekdays" || value === "weekends") return value;
+  if (typeof value === "string") {
+    if (value === "none") return "none";
+    if (value.startsWith("weekly:")) {
+      const day = value.slice("weekly:".length);
+      if (VALID_WEEKDAYS.includes(day as any)) return value as RepeatRule;
+    }
+  }
+  return "none";
+}
+function normalizeTask(task: Task): Task {
+  return { ...task, repeat: normalizeRepeat((task as any)?.repeat) };
+}
 
 export interface Task {
   id: string;
@@ -63,6 +78,7 @@ function weekdayNameInTZ(date: Date, tz: string = KUWAIT_TZ): "Mon"|"Tue"|"Wed"|
   return (parts.find(p=>p.type==="weekday")?.value ?? "Mon").slice(0,3) as any;
 }
 function matchesRepeat(rule: RepeatRule, dateStr: string, tz: string = KUWAIT_TZ): boolean {
+  if (!rule) return false;
   if (rule === "none") return false;
   const [y,m,d] = dateStr.split("-").map(Number);
   const date = new Date(Date.UTC(y,m-1,d,12,0,0));
@@ -76,7 +92,7 @@ function matchesRepeat(rule: RepeatRule, dateStr: string, tz: string = KUWAIT_TZ
 function loadStorage(): StorageShape {
   const stored = readJSON<StorageShape>(STORAGE_KEY, { tasks: [] });
   const tasks = Array.isArray(stored.tasks) ? stored.tasks : [];
-  return { tasks: tasks.slice() };
+  return { tasks: tasks.map((t) => normalizeTask(t)) };
 }
 function saveStorage(data: StorageShape) {
   writeJSON(STORAGE_KEY, data);
@@ -205,7 +221,7 @@ export function useTodoDaily() {
             priority: t.priority,
             pinned: !!t.pinned,
             due_date: t.due_date ?? undefined,
-            repeat: t.repeat,
+            repeat: normalizeRepeat(t.repeat),
             created_at: t.created_at,
             updated_at: t.updated_at,
             status_by_date: {},
@@ -311,21 +327,24 @@ export function useTodoDaily() {
     });
   }, []);
 
-  const addQuickTask = useCallback(async (category: Category, title: string, note?: string, priority: 1|2|3 = 2, pinned=false) => {
+  const addQuickTask = useCallback(async (category: Category, title: string, note?: string, priority: 1|2|3 = 2, pinned=false, dueDate?: string | null) => {
     const today = getTodayInTZ(KUWAIT_TZ);
-    // find the earliest date (today forward) with no pending task for this category
-    let targetDate = today;
-    for (let i = 0; i < 365; i += 1) {
-      const candidate = shiftDate(today, i);
-      const exists = storage.tasks.some((t) => {
-        if (t.category !== category) return false;
-        if (t.due_date !== candidate) return false;
-        const status = t.status_by_date?.[candidate];
-        return status !== "done" && status !== "skipped";
-      });
-      if (!exists) {
-        targetDate = candidate;
-        break;
+    const requestedDate = dueDate?.trim() || null;
+    let targetDate = requestedDate || today;
+    if (!requestedDate) {
+      // find the earliest date (today forward) with no pending task for this category
+      for (let i = 0; i < 365; i += 1) {
+        const candidate = shiftDate(today, i);
+        const exists = storage.tasks.some((t) => {
+          if (t.category !== category) return false;
+          if (t.due_date !== candidate) return false;
+          const status = t.status_by_date?.[candidate];
+          return status !== "done" && status !== "skipped";
+        });
+        if (!exists) {
+          targetDate = candidate;
+          break;
+        }
       }
     }
 

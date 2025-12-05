@@ -9,7 +9,18 @@ const DashboardClient = dynamic(() => import("./DashboardClient"), {
 });
 
 export default function DashboardWrapper() {
-  const { completedToday } = useDailyRitualGate();
+  const { completedToday, ready } = useDailyRitualGate();
+
+  if (!ready) {
+    return (
+      <div className="space-y-8">
+        <TodoDaily />
+        <section className="h-40 rounded-2xl border border-[var(--gaia-border)] bg-[var(--gaia-surface-soft)] p-6 shadow-lg">
+          <div className="h-full w-full animate-pulse rounded-xl bg-[var(--gaia-surface)]/60" />
+        </section>
+      </div>
+    );
+  }
 
   if (!completedToday) {
     return (
@@ -28,5 +39,5 @@ export default function DashboardWrapper() {
     );
   }
 
-  return <DashboardClient />;
+  return <DashboardClient completedToday={completedToday ?? false} ready={ready} />;
 }

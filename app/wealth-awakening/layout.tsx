@@ -13,7 +13,7 @@ export default function WealthAwakeningLayout({
   children: ReactNode;
 }) {
   // TEMP: bypass permission and lesson gates for review; set back to false after testing.
-  const forceUnlock = true;
+  const forceUnlock = false;
 
   if (forceUnlock) {
     return <WealthShell>{children}</WealthShell>;

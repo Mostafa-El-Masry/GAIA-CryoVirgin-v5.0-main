@@ -14,7 +14,7 @@ type DailyGateState = {
 
 export function useDailyRitualGate() {
   const [today, setToday] = useState<string>(() => todayKey());
-  const [completedToday, setCompletedToday] = useState<boolean>(false);
+  const [completedToday, setCompletedToday] = useState<boolean | null>(null);
   const [ready, setReady] = useState<boolean>(false);
 
   useEffect(() => {
