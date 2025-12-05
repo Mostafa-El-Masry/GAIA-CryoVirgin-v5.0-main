@@ -904,6 +904,12 @@ export default function LessonPageClient({
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-full border gaia-border bg-[var(--gaia-surface-soft)] px-4 py-2 text-xs sm:text-sm font-semibold text-[var(--gaia-foreground)] hover:bg-[var(--gaia-surface)] shadow-sm"
+            >
+              Review TODO first
+            </Link>
             {nextLesson && (
               <Link
                 href={`/apollo/academy/Paths/lesson/${nextLesson.id}`}
@@ -922,6 +928,12 @@ export default function LessonPageClient({
           <span className="inline-flex items-center gap-2 rounded-full border gaia-border px-3 py-1.5 bg-[var(--gaia-surface-soft)]">
             Path: {path.title}
           </span>
+          <Link
+            href="/TODO"
+            className="inline-flex items-center gap-2 rounded-full border gaia-border px-3 py-1.5 bg-[var(--gaia-surface-soft)] text-[var(--gaia-foreground)] hover:bg-[var(--gaia-surface)] font-semibold"
+          >
+            TODO dashboard
+          </Link>
         </div>
       </header>
 

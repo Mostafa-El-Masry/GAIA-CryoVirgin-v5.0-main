@@ -7,7 +7,9 @@ import LessonGate from "@/components/permissions/LessonGate";
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <PermissionGate permission="dashboard">
-      <LessonGate featureLabel="Dashboard">{children}</LessonGate>
+      <LessonGate featureLabel="Dashboard" minLessons={0}>
+        {children}
+      </LessonGate>
     </PermissionGate>
   );
 }

@@ -398,11 +398,11 @@ export default function AcademyDashboardPage() {
 
   const nextLesson = useMemo(() => {
     if (!todayLessons.length) return null;
-    const incomplete = todayLessons.filter(
-      (lesson) => !isLessonCompleted(todayTrackId, lesson.id)
-    );
-    return incomplete[0] ?? todayLessons[0] ?? null;
-  }, [todayLessons, todayTrackId, isLessonCompleted]);
+    const completedCount =
+      state.byTrack[todayTrackId]?.completedLessonIds.length ?? 0;
+    // Align with calendar/path: next lesson = first incomplete by index
+    return todayLessons[completedCount] ?? todayLessons[todayLessons.length - 1];
+  }, [state.byTrack, todayLessons, todayTrackId]);
 
   const backlog = useMemo(
     () => computeBacklogByTrack(lastVisitDate, todayIso),
