@@ -243,6 +243,10 @@ export default function LessonPageClient({
     SpeechSynthesisVoice[]
   >([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState("__auto__");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle"
+  );
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const narrationText = useMemo(
     () =>
       `${lessonContent.study.title}. ${lessonContent.study.paragraphs.join(" ")}`,
@@ -401,6 +405,61 @@ export default function LessonPageClient({
   }, []);
 
   useEffect(() => {
+    const handlePlayable = () => setVideoPlayed(true);
+    window.addEventListener("lesson-video-playable", handlePlayable as any);
+    return () => {
+      window.removeEventListener(
+        "lesson-video-playable",
+        handlePlayable as any
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    const hydrateLatestRun = async () => {
+      try {
+        if (!isSupabaseClientConfigured) return;
+        const session = await getSupabaseSession();
+        const token = session?.access_token ?? null;
+        if (!token) return;
+        const res = await fetch(
+          `/api/academy/lesson-run?lessonId=${encodeURIComponent(lessonId)}`,
+          {
+            headers: { authorization: `Bearer ${token}` },
+          }
+        );
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          data?:
+            | {
+                last_quiz_answers?: Record<string, string> | null;
+                last_quiz_correct?: boolean | null;
+                quiz_answers?: Record<string, string> | null;
+                quiz_correct?: boolean | null;
+              }
+            | null;
+        };
+        const answers =
+          json.data?.last_quiz_answers ??
+          json.data?.quiz_answers ??
+          null;
+        const correct =
+          json.data?.last_quiz_correct ?? json.data?.quiz_correct ?? null;
+        if (answers) {
+          setQuizAnswers(answers);
+          setQuizSubmitted(true);
+          if (correct) {
+            setSaveMessage("Loaded saved answers from Supabase");
+          }
+        }
+      } catch {
+        /* ignore hydrate errors */
+      }
+    };
+    hydrateLatestRun();
+  }, [lessonId]);
+
+  useEffect(() => {
     if (!speechSupported) return;
     const loadVoices = () => {
       const voices = window.speechSynthesis.getVoices();
@@ -431,10 +490,6 @@ export default function LessonPageClient({
   const [draftPracticeInstructions, setDraftPracticeInstructions] = useState(
     (baseContent.practice?.instructions ?? []).join("\n")
   );
-  const [saveStatus, setSaveStatus] = useState<
-    "idle" | "saving" | "saved" | "error"
-  >("idle");
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [isEditingLesson, setIsEditingLesson] = useState(false);
 
   const [notes, setNotes] = useState<string>("");
@@ -574,7 +629,7 @@ export default function LessonPageClient({
       setIsEditingLesson(false);
     } catch (error) {
       console.error("Failed to save lesson override", error);
-      setSaveStatus("error");
+      setSaveStatus("idle");
       setSaveMessage(
         "Failed to save lesson. Please check your network or Supabase configuration."
       );
@@ -605,7 +660,7 @@ export default function LessonPageClient({
       setIsEditingLesson(false);
     } catch (error) {
       console.error("Failed to reset lesson override", error);
-      setSaveStatus("error");
+      setSaveStatus("idle");
       setSaveMessage(
         "Failed to reset lesson. Please check your network or Supabase configuration."
       );
@@ -677,14 +732,47 @@ export default function LessonPageClient({
       (q) => quizAnswers[q.id] === q.correctOptionId
     );
   }, [quizContent, quizAnswers]);
+  const isPlaygroundLocked = Boolean(
+    trackId === "programming" && quizContent && !allCorrectNow
+  );
+  const [videoPlayed, setVideoPlayed] = useState(false);
+  const [codePassed, setCodePassed] = useState(false);
+  const [activeCompleted, setActiveCompleted] = useState(
+    isLessonCompleted(trackId, lessonId)
+  );
+  const allCorrect = quizSubmitted && allCorrectNow;
+
+  useEffect(() => {
+    if (!activeCompleted && allCorrectNow && videoPlayed && codePassed) {
+      toggleLessonCompleted(trackId, lessonId);
+      setActiveCompleted(true);
+    }
+  }, [
+    activeCompleted,
+    allCorrectNow,
+    codePassed,
+    videoPlayed,
+    lessonId,
+    trackId,
+    toggleLessonCompleted,
+  ]);
   const handleSubmitQuiz = useCallback(() => {
     setQuizSubmitted(true);
+    setSaveStatus("saving");
     const payload = {
       quizAnswers,
       quizCorrect: allCorrectNow,
       quizSubmittedAt: new Date().toISOString(),
     };
-    void postLessonRun(payload);
+    void postLessonRun(payload)
+      .then(() => {
+        setSaveStatus("saved");
+        setSaveMessage("Saved to Supabase");
+        setTimeout(() => setSaveStatus("idle"), 1200);
+      })
+      .catch(() => {
+        setSaveStatus("idle");
+      });
   }, [allCorrectNow, postLessonRun, quizAnswers]);
 
   useEffect(() => {
@@ -740,6 +828,7 @@ export default function LessonPageClient({
         codeSubmitted: code,
         codeResult: result,
       });
+      setCodePassed(true);
       return result;
     },
     [codeLanguage, postLessonRun]
@@ -786,9 +875,6 @@ export default function LessonPageClient({
     );
   }
 
-  const activeCompleted = isLessonCompleted(trackId, lessonId);
-  const allCorrect = quizSubmitted && allCorrectNow;
-
   const toggleArc = (arcId: string) => {
     setOpenArcIds((prev) => {
       const next = new Set(prev);
@@ -818,18 +904,6 @@ export default function LessonPageClient({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => toggleLessonCompleted(trackId, lessonId)}
-              className={[
-                "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs sm:text-sm font-semibold transition shadow-sm",
-                activeCompleted
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                  : "gaia-border bg-[var(--gaia-surface-soft)] text-[var(--gaia-text-default)] hover:bg-[var(--gaia-surface-soft)]/80",
-              ].join(" ")}
-            >
-              {activeCompleted ? "Done" : "Mark complete"}
-            </button>
             {nextLesson && (
               <Link
                 href={`/apollo/academy/Paths/lesson/${nextLesson.id}`}
@@ -1124,13 +1198,19 @@ export default function LessonPageClient({
           <div className="flex flex-wrap items-center gap-2 rounded-full border gaia-border bg-[var(--gaia-surface-soft)] p-1 text-sm font-semibold">
             {tabs.map((tab) => {
               const isActive = tab === activeTab;
+              const isLocked = tab === "notes" && isPlaygroundLocked;
               return (
                 <button
                   key={tab}
                   type="button"
-                  onClick={() => setActiveTab(tab)}
+                  disabled={isLocked}
+                  onClick={() => {
+                    if (isLocked) return;
+                    setActiveTab(tab);
+                  }}
                   className={[
                     "px-4 py-2 rounded-full transition-colors",
+                    isLocked ? "opacity-50 cursor-not-allowed" : "",
                     isActive
                       ? "bg-[var(--gaia-surface)] text-[var(--gaia-foreground)] shadow-sm border gaia-border"
                       : "text-[var(--gaia-text-muted)] hover:text-[var(--gaia-foreground)]",
@@ -1145,6 +1225,11 @@ export default function LessonPageClient({
               );
             })}
           </div>
+          {isPlaygroundLocked && (
+            <p className="text-[11px] text-amber-700">
+              Complete the quiz correctly to unlock the playground.
+            </p>
+          )}
 
           {activeTab === "lesson" && (
             <div className="space-y-4">
@@ -1284,8 +1369,13 @@ export default function LessonPageClient({
                       {quizContent.title}
                     </h3>
                     <p className="text-sm text-[var(--gaia-text-muted)]">
-                      Answer each question and then check for feedback.
+                      Answer each question and then check for feedback. Submissions save to your account.
                     </p>
+                    {saveMessage && (
+                      <p className="text-[11px] font-semibold text-emerald-700">
+                        {saveMessage}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-3">
                     {quizContent.questions.map((q, index) => {
@@ -1413,7 +1503,7 @@ export default function LessonPageClient({
             </div>
           )}
 
-          {activeTab === "notes" && (
+          {activeTab === "notes" && !isPlaygroundLocked && (
             <>
               {trackId === "programming" ? (
                 <div className="space-y-3 text-sm text-[var(--gaia-text-default)]">
@@ -1424,6 +1514,11 @@ export default function LessonPageClient({
                     <p className="text-[11px] sm:text-xs text-[var(--gaia-text-muted)]">
                       Practice what you just studied.
                     </p>
+                    {activeCompleted && (
+                      <p className="text-[11px] font-semibold text-emerald-700">
+                        Lesson marked complete (video + quiz + playground).
+                      </p>
+                    )}
                   </div>
                   <CodePlayground
                     initialCode={defaultCodeSnippet}

@@ -61,6 +61,17 @@ export const LessonVideoBlock: React.FC<LessonVideoBlockProps> = ({
             loading="lazy"
             referrerPolicy="strict-origin-when-cross-origin"
             onError={() => setBlocked(true)}
+            onLoad={() => {
+              // Allow parent to know the video is playable
+              try {
+                const ev = new CustomEvent("lesson-video-playable", {
+                  detail: { youtubeId },
+                });
+                window.dispatchEvent(ev);
+              } catch {
+                /* ignore */
+              }
+            }}
           />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-slate-900 text-center text-sm text-slate-200 px-4">

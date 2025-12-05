@@ -17,6 +17,70 @@ function json(data: unknown, status = 200) {
   return NextResponse.json(data, { status });
 }
 
+async function resolveUserId(admin: any, token: string) {
+  const { data: userData, error: userError } = await admin.auth.getUser(token);
+  if (userError || !userData?.user) return null;
+  return userData.user.id as string;
+}
+
+export async function GET(req: Request) {
+  const admin = createSupabaseAdminClient();
+  if (!admin) {
+    return json(
+      { error: "Supabase service role key not configured on this server" },
+      501
+    );
+  }
+
+  const auth = req.headers.get("authorization") ?? "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!token) return json({ error: "Missing Authorization token" }, 401);
+
+  const { searchParams } = new URL(req.url);
+  const lessonId = searchParams.get("lessonId");
+  if (!lessonId) return json({ error: "lessonId is required" }, 400);
+
+  const userId = await resolveUserId(admin, token);
+  if (!userId) return json({ error: "Invalid token" }, 401);
+
+  // Prefer meta table if present
+  try {
+    const { data: metaData, error: metaError } = await admin
+      .from("academy_lesson_runs_meta")
+      .select(
+        "last_quiz_answers, last_quiz_correct, last_quiz_submitted_at, last_code_language, last_code_submitted, last_code_result, last_completed_at"
+      )
+      .eq("user_id", userId)
+      .eq("lesson_id", lessonId)
+      .maybeSingle();
+
+    if (!metaError && metaData) {
+      return json({ data: { source: "meta", ...metaData } }, 200);
+    }
+  } catch {
+    // ignore and fall through to runs
+  }
+
+  // Fallback to latest run
+  const { data, error } = await admin
+    .from("academy_lesson_runs")
+    .select(
+      "quiz_answers, quiz_correct, quiz_submitted_at, code_language, code_submitted, code_result, completed_at"
+    )
+    .eq("user_id", userId)
+    .eq("lesson_id", lessonId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("/api/academy/lesson-run GET error:", error);
+    return json({ error: error.message }, 500);
+  }
+
+  return json({ data: data ? { source: "runs", ...data } : null }, 200);
+}
+
 export async function POST(req: Request) {
   const admin = createSupabaseAdminClient();
   if (!admin) {
@@ -30,10 +94,8 @@ export async function POST(req: Request) {
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
   if (!token) return json({ error: "Missing Authorization token" }, 401);
 
-  const { data: userData, error: userError } = await admin.auth.getUser(token);
-  if (userError || !userData?.user)
-    return json({ error: "Invalid token" }, 401);
-  const userId = userData.user.id;
+  const userId = await resolveUserId(admin, token);
+  if (!userId) return json({ error: "Invalid token" }, 401);
 
   let body: LessonRunPayload;
   try {
