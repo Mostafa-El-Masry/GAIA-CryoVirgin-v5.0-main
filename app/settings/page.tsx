@@ -22,6 +22,12 @@ import type { GalleryItem } from "@/components/gallery/types";
 import { deriveAutoTags, AUTO_TAG_VERSION } from "@/components/gallery/tagging";
 import PermissionGate from "@/components/permissions/PermissionGate";
 import ProfilesCard from "./sections/ProfilesCard";
+import {
+  onUserStorageReady,
+  readJSON,
+  setItem,
+  subscribe as subscribeStorage,
+} from "@/lib/user-storage";
 
 const BUTTONS: ButtonStyle[] = ["solid", "outline", "ghost"];
 const SEARCHES: SearchStyle[] = ["rounded", "pill", "underline"];
@@ -89,6 +95,10 @@ function SettingsContent() {
     null
   );
   const [activeTab, setActiveTab] = useState<TabId>("appearance");
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>(
+    []
+  );
+  const [voiceChoice, setVoiceChoice] = useState("__auto__");
 
   const availableTabs = useMemo(() => {
     const tabs: Array<{ id: TabId; label: string }> = [
@@ -100,6 +110,40 @@ function SettingsContent() {
     ];
     return tabs;
   }, []);
+
+  const speechSupported =
+    typeof window !== "undefined" && "speechSynthesis" in window;
+
+  useEffect(() => {
+    const applyStoredVoice = () => {
+      const stored = readJSON<string | null>("gaia.academy.voicePreference", null);
+      if (stored) setVoiceChoice(stored);
+    };
+    applyStoredVoice();
+    const offReady = onUserStorageReady(applyStoredVoice);
+    const offStorage = subscribeStorage(({ key, value }) => {
+      if (key === "gaia.academy.voicePreference" && typeof value === "string") {
+        setVoiceChoice(value);
+      }
+    });
+    return () => {
+      offReady();
+      offStorage();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!speechSupported) return;
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      setAvailableVoices(voices || []);
+    };
+    loadVoices();
+    window.speechSynthesis.addEventListener?.("voiceschanged", loadVoices);
+    return () => {
+      window.speechSynthesis.removeEventListener?.("voiceschanged", loadVoices);
+    };
+  }, [speechSupported]);
 
   // Users/admin UI removed to avoid server-side admin calls when the project
   // is running without Supabase service-role credentials (local/dev).
@@ -388,6 +432,45 @@ function SettingsContent() {
               This uses your Supabase auth profile. Change it by signing in or
               out from GAIA.
             </p>
+
+            <div className="rounded border gaia-border p-3">
+              <p className="text-sm font-semibold">Lesson narration voice</p>
+              <p className="text-xs gaia-muted">
+                Pick the voice used for lesson read-aloud. This preference
+                follows your user storage.
+              </p>
+              {speechSupported && availableVoices.length > 0 ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <select
+                    value={voiceChoice}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setVoiceChoice(value);
+                      setItem("gaia.academy.voicePreference", value);
+                    }}
+                    className="rounded border gaia-border bg-[var(--gaia-surface)] px-3 py-1.5 text-sm gaia-contrast focus:border-info focus:ring-2 focus:ring-info/20"
+                  >
+                    <option value="__auto__">Auto (female preferred)</option>
+                    {availableVoices.map((voice) => (
+                      <option key={voice.voiceURI} value={voice.voiceURI}>
+                        {voice.name} {voice.lang ? `(${voice.lang})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[12px] gaia-muted">
+                    Currently:{" "}
+                    {voiceChoice === "__auto__"
+                      ? "Auto"
+                      : availableVoices.find((v) => v.voiceURI === voiceChoice)
+                          ?.name ?? "Unknown"}
+                  </span>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs gaia-muted">
+                  Voice selection is unavailable in this browser.
+                </p>
+              )}
+            </div>
           </section>
         )}
 

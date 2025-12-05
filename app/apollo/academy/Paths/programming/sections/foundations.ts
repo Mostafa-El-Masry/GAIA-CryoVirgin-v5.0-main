@@ -12,15 +12,18 @@ export function getFoundationsStudy(lessonCode: string): StudyDescription | null
         title: "A Short History of Programming",
         videoUrl: "https://www.youtube.com/watch?v=OwS9aTE2Go4",
         paragraphs: [
-          "Before we write any code, zoom out and see where programming came from. In the 1800s, Ada Lovelace wrote the first published algorithm for Babbage’s Analytical Engine — showing a machine could follow precise instructions.",
-          "Early computers used punched cards (inspired by the Jacquard loom) to feed instructions. Those cards led to low-level assembly languages that talked almost directly to hardware.",
-          "High-level languages arrived to make humans more productive: FORTRAN and COBOL in the 1950s for math and business, then C in the 1970s, which still shapes modern languages like C++, Go, and Rust.",
+          "Before we write any code, zoom out and see where programming came from. In the 1800s, Ada Lovelace wrote the first published algorithm for Babbage's Analytical Engine, showing a machine could follow precise instructions.",
+          "Mechanical-to-electrical: early computers used punched cards inspired by the Jacquard loom to feed instructions. Those cards led to low-level assembly languages that talked almost directly to hardware.",
+          "High-level languages arrived to make humans productive: FORTRAN and COBOL in the 1950s for math and business, then C in the 1970s, which still shapes modern languages like C++, Go, and Rust.",
+          "UNIX and C spread the idea of portable software. Write code once, recompile on new hardware, and carry your logic with you. That portability mindset still powers cloud and container work today.",
           "The personal-computer era (1970s-80s) and the internet (1990s) exploded the need for accessible languages. HTML, CSS, and JavaScript emerged so people could publish and interact on the web.",
-          "Open-source communities (Linux, Python, PHP, Ruby, JavaScript ecosystems) made it normal to share code freely and improve it together. Modern package managers like npm and bundlers build on this culture.",
-          "Read The Odin Project Foundations \"History of the Web\" to see how the internet’s growth pulled programming forward. It uses simple language and free references.",
-          "Skim Codecademy’s free blog article \"A Brief History of Programming Languages\" (or similar free history pieces). It retells the same story with short, approachable examples.",
-          "Optional extra: browse freeCodeCamp’s timeline-style articles on computing history to hear the same milestones in another voice. Multiple sources help the narrative stick.",
-          "Keep one idea: programming is about giving clear instructions. Over time, languages improved so humans could express those instructions more easily — the principle stays the same.",
+          "The open-source wave (Linux, Python, PHP, Ruby, JavaScript ecosystems) made it normal to share code freely and improve it together. Package managers like npm and PyPI turned code reuse into a habit.",
+          "Modern tooling added quality-of-life layers: Git for history, CI for automated checks, and frameworks like React and Next.js so you can focus on product ideas instead of wiring everything by hand.",
+          "GAIA uses those layers: Next.js for the web shell, Tailwind and custom styles for the look, Supabase for data, and npm packages for speed. You are building on 180 years of experiments and ideas.",
+          "Read The Odin Project Foundations 'History of the Web' to see how the internet's growth pulled programming forward. It uses simple language and free references.",
+          "Skim Codecademy's free blog article 'A Brief History of Programming Languages' (or similar free history pieces). It retells the same story with short, approachable examples.",
+          "Optional extra: browse freeCodeCamp's timeline-style articles on computing history to hear the same milestones in another voice. Multiple sources help the narrative stick.",
+          "Keep one idea: programming is about giving clear instructions. Over time, languages improved so humans could express those instructions more easily. The principle stays the same.",
         ],
       };
     case "0.1":
@@ -168,84 +171,257 @@ export function getFoundationsQuiz(lessonCode: string): QuizConfig | null {
         questions: [
           {
             id: "q1",
-            prompt:
-              "Why is Ada Lovelace often called the first programmer?",
+            prompt: "Why is Ada Lovelace often linked to the start of programming?",
             options: [
               {
                 id: "q1-a",
-                label: "She wrote one of the earliest algorithms for a mechanical computer (the Analytical Engine).",
+                label: "She invented modern laptops and smartphones.",
               },
               {
                 id: "q1-b",
-                label: "She invented modern laptops.",
+                label: "She published one of the first algorithms for Babbage's Analytical Engine.",
               },
               {
                 id: "q1-c",
-                label: "She created the internet.",
+                label: "She was the first person to run a web server.",
               },
               {
                 id: "q1-d",
-                label: "She was the first person to use JavaScript.",
+                label: "She designed the first graphics card.",
               },
             ],
-            correctOptionId: "q1-a",
+            correctOptionId: "q1-b",
             explanation:
-              "Lovelace described how to instruct Babbage’s Analytical Engine, showing machines could follow step-by-step algorithms.",
+              "Lovelace described how to instruct the Analytical Engine, proving a machine could follow step-by-step algorithms.",
           },
           {
             id: "q2",
-            prompt:
-              "Why were high-level languages like FORTRAN and COBOL created?",
+            prompt: "What did punched cards and early assembly languages give early builders?",
             options: [
               {
                 id: "q2-a",
-                label: "To make humans write instructions faster and more clearly than raw machine code or punched cards.",
+                label: "A way to draw pictures on screen without any code.",
               },
               {
                 id: "q2-b",
-                label: "To make computers heavier.",
+                label: "Instant cloud deployments with no setup.",
               },
               {
                 id: "q2-c",
-                label: "To eliminate the need for electricity.",
+                label: "A reliable way to feed precise instructions directly to hardware.",
               },
               {
                 id: "q2-d",
-                label: "To replace the web browser.",
+                label: "An automatic way to translate any language to English.",
               },
             ],
-            correctOptionId: "q2-a",
+            correctOptionId: "q2-c",
             explanation:
-              "High-level languages help humans express logic without micromanaging hardware details, boosting productivity.",
+              "Cards and early assembly were low-level instruction sets that hardware could follow exactly.",
           },
           {
             id: "q3",
-            prompt:
-              "What is one key reason open-source communities matter in programming history?",
+            prompt: "Why did high-level languages like FORTRAN and COBOL appear?",
             options: [
               {
                 id: "q3-a",
-                label: "They make it normal to share code, learn from others, and improve tools together for free.",
+                label: "To force every program to run slower.",
               },
               {
                 id: "q3-b",
-                label: "They prevent anyone from writing new code.",
+                label: "To remove math from programming.",
               },
               {
                 id: "q3-c",
-                label: "They only allow programming on weekends.",
+                label: "To replace all hardware with paper forms.",
               },
               {
                 id: "q3-d",
-                label: "They eliminated the need for version control.",
+                label: "To help humans write and maintain instructions faster than raw machine code.",
               },
             ],
-            correctOptionId: "q3-a",
+            correctOptionId: "q3-d",
             explanation:
-              "Open-source culture encourages collaboration and reuse, which accelerated modern languages, frameworks, and package ecosystems.",
+              "High-level languages traded some hardware control for human speed and clarity.",
+          },
+          {
+            id: "q4",
+            prompt: "What idea did UNIX and the C language popularize for everyday developers?",
+            options: [
+              {
+                id: "q4-a",
+                label: "Write portable software that can move between machines with minimal changes.",
+              },
+              {
+                id: "q4-b",
+                label: "Never use text editors to write code.",
+              },
+              {
+                id: "q4-c",
+                label: "Only build programs that run on punch cards.",
+              },
+              {
+                id: "q4-d",
+                label: "Ban all programming on weekends.",
+              },
+            ],
+            correctOptionId: "q4-a",
+            explanation:
+              "C plus UNIX encouraged the habit of compiling the same logic on many machines, a foundation for modern portability.",
+          },
+          {
+            id: "q5",
+            prompt: "What shift happened in the personal-computer and early web era?",
+            options: [
+              {
+                id: "q5-a",
+                label: "Programming stopped mattering because hardware solved everything.",
+              },
+              {
+                id: "q5-b",
+                label: "Accessible languages like HTML, CSS, and JavaScript let people publish and interact online.",
+              },
+              {
+                id: "q5-c",
+                label: "Developers abandoned the internet entirely.",
+              },
+              {
+                id: "q5-d",
+                label: "Only enterprise mainframes could run code.",
+              },
+            ],
+            correctOptionId: "q5-b",
+            explanation:
+              "As PCs and the web spread, people needed approachable languages to create and share content online.",
+          },
+          {
+            id: "q6",
+            prompt: "Why did open-source communities change how we build software?",
+            options: [
+              {
+                id: "q6-a",
+                label: "They made it illegal to share code with anyone.",
+              },
+              {
+                id: "q6-b",
+                label: "They removed every license from commercial software.",
+              },
+              {
+                id: "q6-c",
+                label: "They stopped all collaboration and focused on solo work.",
+              },
+              {
+                id: "q6-d",
+                label: "They normalized sharing code, learning from others, and improving tools together.",
+              },
+            ],
+            correctOptionId: "q6-d",
+            explanation:
+              "Open source encouraged reuse and collaboration, leading to ecosystems like npm and PyPI.",
+          },
+          {
+            id: "q7",
+            prompt: "What do modern tools like Git, CI, and frameworks add on top of languages?",
+            options: [
+              {
+                id: "q7-a",
+                label: "They automatically write every feature for you with zero effort.",
+              },
+              {
+                id: "q7-b",
+                label: "They remove the need to think about your product.",
+              },
+              {
+                id: "q7-c",
+                label: "They give history, automation, and structure so you can focus on product ideas.",
+              },
+              {
+                id: "q7-d",
+                label: "They only work on paper punch cards.",
+              },
+            ],
+            correctOptionId: "q7-c",
+            explanation:
+              "Version control, automated checks, and opinionated frameworks reduce friction so you can ship ideas faster.",
+          },
+          {
+            id: "q8",
+            prompt: "How does the portability mindset from C and UNIX show up today?",
+            options: [
+              {
+                id: "q8-a",
+                label: "Developers refuse to run code on more than one computer.",
+              },
+              {
+                id: "q8-b",
+                label: "We package code so it can run across laptops, servers, and clouds with minimal changes.",
+              },
+              {
+                id: "q8-c",
+                label: "Programs only run if you retype them every day.",
+              },
+              {
+                id: "q8-d",
+                label: "Portability disappeared once browsers existed.",
+              },
+            ],
+            correctOptionId: "q8-b",
+            explanation:
+              "Containers, cloud runtimes, and cross-platform builds all echo the goal of moving logic across environments.",
+          },
+          {
+            id: "q9",
+            prompt: "Which pieces in this course build on that long history for GAIA?",
+            options: [
+              {
+                id: "q9-a",
+                label: "Only a spreadsheet and a calculator.",
+              },
+              {
+                id: "q9-b",
+                label: "Just raw assembly with no tools.",
+              },
+              {
+                id: "q9-c",
+                label: "A single HTML file with no styling or data.",
+              },
+              {
+                id: "q9-d",
+                label: "Next.js, Tailwind styling, Supabase data, and npm packages working together.",
+              },
+            ],
+            correctOptionId: "q9-d",
+            explanation:
+              "GAIA leans on modern frameworks, styling systems, and hosted data to deliver quickly.",
+          },
+          {
+            id: "q10",
+            prompt: "What is the single idea to keep from this history lesson?",
+            options: [
+              {
+                id: "q10-a",
+                label: "Programming is about memorizing every language ever created.",
+              },
+              {
+                id: "q10-b",
+                label: "Programming works only if you buy the newest hardware each year.",
+              },
+              {
+                id: "q10-c",
+                label: "Programming is clear instructions for a machine; languages just keep getting better at expressing them.",
+              },
+              {
+                id: "q10-d",
+                label: "History is unimportant because tools never change.",
+              },
+            ],
+            correctOptionId: "q10-c",
+            explanation:
+              "Across 180 years, the core remains the same: clear, ordered instructions. Languages evolve to express them more easily.",
           },
         ],
       };
+
 
     case "0.1":
       return {

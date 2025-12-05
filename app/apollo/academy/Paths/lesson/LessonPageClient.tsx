@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Pause, Play, Square, Volume2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   readJSON,
   writeJSON,
   removeItem,
   onUserStorageReady,
   subscribe as subscribeStorage,
+  setItem,
 } from "@/lib/user-storage";
 import { useAcademyProgress } from "../../useAcademyProgress";
 import type { TrackId } from "../../lessonsMap";
@@ -24,6 +26,8 @@ type LessonPageClientProps = {
 };
 
 type TabId = "lesson" | "quiz" | "downloads" | "notes";
+
+const VOICE_PREF_KEY = "gaia.academy.voicePreference";
 
 type FlatLesson = {
   id: string;
@@ -165,6 +169,210 @@ export default function LessonPageClient({
     });
     return { ...lessonContent.quiz, questions };
   }, [lessonContent.quiz, lessonId, trackId]);
+
+  const isHistoryLesson = trackId === "programming" && lessonId === "prog-0-0";
+  const historyTimeline = useMemo(
+    () =>
+      isHistoryLesson
+        ? [
+            {
+              era: "1843",
+              title: "Ada Lovelace",
+              note: "Publishes an algorithm for the Analytical Engine — proof that machines can follow instructions.",
+            },
+            {
+              era: "1950s",
+              title: "FORTRAN & COBOL",
+              note: "First high-level languages make math and business software faster to write than raw machine code.",
+            },
+            {
+              era: "1970s",
+              title: "C and UNIX",
+              note: "Portability mindset: compile the same logic on many machines and carry your work with you.",
+            },
+            {
+              era: "1990s",
+              title: "The Web Stack",
+              note: "HTML, CSS, and JavaScript let anyone publish and interact online; browsers become the new runtime.",
+            },
+            {
+              era: "2000s",
+              title: "Open Source + Git",
+              note: "Sharing code becomes normal; version control and package managers accelerate collaboration.",
+            },
+            {
+              era: "Today",
+              title: "Cloud & Frameworks",
+              note: "Next.js, Tailwind, Supabase, and npm sit on top of that history so you can ship product ideas fast.",
+            },
+          ]
+        : [],
+    [isHistoryLesson]
+  );
+
+  const historyThemes = useMemo(
+    () =>
+      isHistoryLesson
+        ? [
+            {
+              label: "Core principle",
+              body: "Programming is clear, ordered instructions. Languages evolve to make those instructions easier to express.",
+            },
+            {
+              label: "Why you care",
+              body: "Knowing the arc removes mystery: GAIA is just the newest layer built on a long chain of human-friendly tools.",
+            },
+            {
+              label: "What to do now",
+              body: "Write a 10-line timeline in your notes, then explain it out loud. If it feels clear, you are ready to keep going.",
+            },
+          ]
+        : [],
+    [isHistoryLesson]
+  );
+
+  const [narrationState, setNarrationState] = useState<
+    "idle" | "playing" | "paused"
+  >("idle");
+  const [narrationError, setNarrationError] = useState<string | null>(null);
+  const [availableVoices, setAvailableVoices] = useState<
+    SpeechSynthesisVoice[]
+  >([]);
+  const [selectedVoiceId, setSelectedVoiceId] = useState("__auto__");
+  const narrationText = useMemo(
+    () =>
+      `${lessonContent.study.title}. ${lessonContent.study.paragraphs.join(" ")}`,
+    [lessonContent.study.paragraphs, lessonContent.study.title]
+  );
+
+  const speechSupported =
+    typeof window !== "undefined" && "speechSynthesis" in window;
+  const currentUtterance = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => {
+    const applyStoredVoice = () => {
+      const stored = readJSON<string | null>(VOICE_PREF_KEY, null);
+      if (stored) setSelectedVoiceId(stored);
+    };
+    applyStoredVoice();
+    const offReady = onUserStorageReady(applyStoredVoice);
+    const offStorage = subscribeStorage(({ key, value }) => {
+      if (key === VOICE_PREF_KEY && typeof value === "string") {
+        setSelectedVoiceId(value);
+      }
+    });
+    return () => {
+      offReady();
+      offStorage();
+    };
+  }, []);
+
+  const pickVoice = useCallback(() => {
+    if (!speechSupported) return null;
+    const voices = availableVoices;
+    if (!voices?.length) return null;
+
+    if (selectedVoiceId !== "__auto__") {
+      const found = voices.find((v) => v.voiceURI === selectedVoiceId);
+      if (found) return found;
+    }
+
+    const favoredNames = ["female", "woman", "zira", "susan", "eva"];
+
+    const scoreVoice = (voice: SpeechSynthesisVoice) => {
+      const name = voice.name.toLowerCase();
+      const lang = (voice.lang || "").toLowerCase();
+      let score = 0;
+      if (favoredNames.some((tag) => name.includes(tag))) score += 100;
+      if (lang.startsWith("en")) score += 10;
+      return score;
+    };
+
+    return voices
+      .map((v) => ({ v, score: scoreVoice(v) }))
+      .sort((a, b) => b.score - a.score)[0].v;
+  }, [availableVoices, selectedVoiceId, speechSupported]);
+
+  const stopNarration = useCallback(() => {
+    if (speechSupported) {
+      window.speechSynthesis.cancel();
+    }
+    currentUtterance.current = null;
+    setNarrationState("idle");
+  }, [speechSupported]);
+
+  const startNarration = useCallback(() => {
+    if (!speechSupported) {
+      setNarrationError("Audio playback is not available in this browser.");
+      return;
+    }
+    const synth = window.speechSynthesis;
+    const preferredVoice = pickVoice();
+    const utterance = new SpeechSynthesisUtterance(narrationText);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+      if (preferredVoice.lang) utterance.lang = preferredVoice.lang;
+    }
+    utterance.onend = () => {
+      currentUtterance.current = null;
+      setNarrationState("idle");
+    };
+    utterance.onerror = () => {
+      currentUtterance.current = null;
+      setNarrationError("Could not play the lesson audio.");
+      setNarrationState("idle");
+    };
+    setNarrationError(null);
+    currentUtterance.current = utterance;
+    synth.cancel();
+    synth.speak(utterance);
+    setNarrationState("playing");
+  }, [narrationText, pickVoice, speechSupported]);
+
+  const pauseNarration = useCallback(() => {
+    if (!speechSupported) return;
+    window.speechSynthesis.pause();
+    setNarrationState("paused");
+  }, [speechSupported]);
+
+  const resumeNarration = useCallback(() => {
+    if (!speechSupported) return;
+    window.speechSynthesis.resume();
+    setNarrationState("playing");
+  }, [speechSupported]);
+
+  const handleToggleReadLesson = useCallback(() => {
+    if (narrationState === "idle") {
+      startNarration();
+    } else if (narrationState === "playing") {
+      pauseNarration();
+    } else if (narrationState === "paused") {
+      resumeNarration();
+    }
+  }, [narrationState, pauseNarration, resumeNarration, startNarration]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!speechSupported) return;
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      setAvailableVoices(voices || []);
+    };
+    loadVoices();
+    window.speechSynthesis.addEventListener?.("voiceschanged", loadVoices);
+    return () => {
+      window.speechSynthesis.removeEventListener?.("voiceschanged", loadVoices);
+    };
+  }, [speechSupported]);
 
   const [draftStudyTitle, setDraftStudyTitle] = useState(
     baseContent.study.title
@@ -876,14 +1084,129 @@ export default function LessonPageClient({
           </div>
 
           {activeTab === "lesson" && (
-            <article className="prose prose-slate max-w-none text-[var(--gaia-text-default)] prose-headings:mt-0 prose-headings:text-[var(--gaia-foreground)] prose-p:leading-7 prose-p:text-[var(--gaia-text-default)] prose-ul:pl-5 prose-li:marker:text-[var(--gaia-text-muted)] prose-strong:text-[var(--gaia-foreground)]">
-              <h3 className="text-2xl font-semibold text-[var(--gaia-foreground)] leading-tight">
-                {lessonContent.study.title}
-              </h3>
-              {lessonContent.study.paragraphs.map((paragraph, idx) => (
-                <p key={idx}>{paragraph}</p>
-              ))}
-            </article>
+            <div className="space-y-4">
+              {isHistoryLesson && (
+                <div className="rounded-2xl border gaia-border bg-[var(--gaia-surface-soft)] p-4 sm:p-5 shadow-sm space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--gaia-text-muted)]">
+                        Course 0 - Lesson 0.0
+                      </p>
+                      <h3 className="text-xl sm:text-2xl font-semibold text-[var(--gaia-foreground)] leading-tight">
+                        Programming history snapshot
+                      </h3>
+                      <p className="text-sm text-[var(--gaia-text-muted)]">
+                        A quick list of milestones so the lesson text below has anchors.
+                      </p>
+                    </div>
+                    <span className="rounded-full border gaia-border px-3 py-1 text-xs font-semibold text-[var(--gaia-text-muted)] bg-[var(--gaia-surface)]">
+                      Why this is here
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {historyTimeline.map((item, idx) => {
+                      const isLast = idx === historyTimeline.length - 1;
+                      return (
+                        <div key={item.era} className="flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <span className="h-3 w-3 rounded-full bg-info shadow-sm" />
+                            {!isLast && (
+                              <span className="flex-1 w-px bg-[var(--gaia-border)]" />
+                            )}
+                          </div>
+                          <div className="flex-1 rounded-xl border gaia-border bg-white/70 px-3 py-3 shadow-[0_1px_4px_rgba(15,23,42,0.08)]">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--gaia-text-muted)]">
+                                {item.era}
+                              </span>
+                              <span className="rounded-full border gaia-border bg-[var(--gaia-surface)] px-2 py-[2px] text-[11px] font-semibold text-[var(--gaia-text-muted)]">
+                                {idx + 1}/{historyTimeline.length}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-sm font-semibold text-[var(--gaia-foreground)]">
+                              {item.title}
+                            </p>
+                            <p className="text-[12px] text-[var(--gaia-text-muted)] leading-relaxed">
+                              {item.note}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleToggleReadLesson}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border gaia-border bg-[var(--gaia-surface)] text-[var(--gaia-foreground)] hover:bg-[var(--gaia-surface-soft)] transition"
+                      aria-label={
+                        narrationState === "playing"
+                          ? "Pause narration"
+                          : narrationState === "paused"
+                          ? "Resume narration"
+                          : "Play narration"
+                      }
+                    >
+                      {narrationState === "playing" ? (
+                        <Pause className="h-4 w-4" />
+                      ) : narrationState === "paused" ? (
+                        <Play className="h-4 w-4" />
+                      ) : (
+                        <Volume2 className="h-4 w-4" />
+                      )}
+                      </button>
+                    {narrationState !== "idle" && (
+                      <button
+                        type="button"
+                        onClick={stopNarration}
+                        className="inline-flex items-center gap-1 rounded-full border gaia-border bg-[var(--gaia-surface)] px-2.5 py-1 text-[12px] font-semibold text-[var(--gaia-text-muted)] hover:bg-[var(--gaia-surface-soft)] transition"
+                      >
+                        <Square className="h-3.5 w-3.5" />
+                        <span>Stop</span>
+                      </button>
+                    )}
+                    {!speechSupported && (
+                      <span className="text-[11px] text-[var(--gaia-text-muted)]">
+                        Audio not supported in this browser.
+                      </span>
+                    )}
+                    {narrationError && (
+                      <span className="text-[11px] text-amber-700">
+                        {narrationError}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border gaia-border bg-[var(--gaia-surface)] px-3 py-3 space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--gaia-text-muted)]">
+                      Why it matters
+                    </p>
+                    {historyThemes.map((theme) => (
+                      <div key={theme.label} className="flex gap-2 items-start text-sm text-[var(--gaia-text-default)]">
+                        <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
+                        <div>
+                          <p className="font-semibold text-[var(--gaia-foreground)]">{theme.label}</p>
+                          <p className="text-[13px] text-[var(--gaia-text-muted)] leading-relaxed">
+                            {theme.body}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <article className="prose prose-slate max-w-none text-[var(--gaia-text-default)] prose-headings:mt-0 prose-headings:text-[var(--gaia-foreground)] prose-p:leading-7 prose-p:text-[var(--gaia-text-default)] prose-ul:pl-5 prose-li:marker:text-[var(--gaia-text-muted)] prose-strong:text-[var(--gaia-foreground)]">
+                <h3 className="text-2xl font-semibold text-[var(--gaia-foreground)] leading-tight">
+                  {lessonContent.study.title}
+                </h3>
+                {lessonContent.study.paragraphs.map((paragraph, idx) => (
+                  <p key={idx}>{paragraph}</p>
+                ))}
+              </article>
+            </div>
           )}
 
           {activeTab === "quiz" && (
